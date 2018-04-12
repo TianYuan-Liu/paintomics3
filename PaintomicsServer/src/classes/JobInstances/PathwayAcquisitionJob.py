@@ -151,6 +151,7 @@ class PathwayAcquisitionJob(Job):
             nConditions, error = self.validateFile(inputOmic, nConditions, error)
 
         if error != "":
+            logging.info("VALIDATING ERRORS. RAISING EXCEPTION. Error: " + error)
             raise Exception("[b]Errors detected in input files, please fix the following issues and try again:[/b][br]" + error)
 
         return True
@@ -262,6 +263,9 @@ class PathwayAcquisitionJob(Job):
 
                 if len(erroneousLines)  > 9:
                     error +=  "Too many errors detected while processing " + inputOmic.get("inputDataFile") + ", skipping remaining lines...\n"
+            elif nLine < 1:
+                error += "The file " + inputOmic.get("inputDataFile") + " <b>does not seem to have any feature lines</b>. Maybe the association process returned empty files, check the files and configuration options just in case."
+
         else:
             error += " - Error while processing " + omicName + ": File " + inputOmic.get("inputDataFile") + "not found.\n"
 

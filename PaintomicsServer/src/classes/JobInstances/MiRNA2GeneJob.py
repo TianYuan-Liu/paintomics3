@@ -32,6 +32,7 @@ from src.common.bioscripts.miRNA2Target import run as run_miRNA2Target
 
 from os import path as os_path, mkdir as os_mkdir
 from csv import reader as csv_reader
+from random import randint
 
 import shutil
 import time
@@ -92,7 +93,7 @@ class MiRNA2GeneJob(Job):
         if len(geneDataInputs) > 1:
             logging.info("VALIDATING RNA-seq BASED FILES..." )
             RNAdataInput = next((x for x in geneDataInputs if x["omicName"].lower() == "gene expression"))
-            nConditions, error = self.validateFile(RNAdataInput, -1, error)
+            nConditions, error = self.validateFile(RNAdataInput, nConditions, error)
 
         if error != "":
             raise Exception("Errors detected in input files, please fix the following issues and try again:" + error)
@@ -195,7 +196,7 @@ class MiRNA2GeneJob(Job):
             # STEP 3. CHECK THE ERRORS AND RETURN
             #*************************************************************************
             if len(erroneousLines)  > 0:
-                error += "Errors detected while processing " + inputOmic.get("inputDataFile") + ":\n"
+                error += " - Errors detected while processing " + inputOmic.get("inputDataFile") + ":\n"
                 error += "[ul]"
                 for k in sorted(erroneousLines.keys()):
                     error+=  "[li]Line " + str(k) + ":" + erroneousLines.get(k) + "[/li]"
@@ -323,15 +324,21 @@ class MiRNA2GeneJob(Job):
                     scoresTable[geneID].append((score, omicValueAux))
                 logging.info("PROCESSING miRNA2Target OUTPUT...DONE")
 
+                # Abort the process to let the user know that there were no results.
+                if len(self.getInputGenesData()) < 1:
+                    logging.info("MIRNA2GENES - NO RESULTS")
+                    raise Exception(" - Your mirna2gene association process did not return any result. Please, check the files (same identifiers, etc) and parameters.")
+
                 #EVEN WHEN THE USER HAS CHOOSE THE OPTION "FC", if the conditions do no allow to calculate the
                 #correlation, the script will calculate the FC
                 methodsHasChanged = (score_type == "fc" and self.score_method != "fc")
 
                 #STEP 6. FOR EACH GENE, ORDER THE MIRNAS BY THE HIGHER CORRELATION OR FC
                 filePrefix = '' if self.getUserID() is not None else self.getJobID() + '_'
+                randomSeed = str(randint(0, 1000))
                 genesToMiRNAFile = open(self.getTemporalDir() + '/' + filePrefix + 'genesToMiRNAFile.tab', 'w')
-                mirna2genesOutput = open(self.getTemporalDir() + '/' + filePrefix + "miRNA2Gene_output_" + self.date + ".tab", 'w')
-                mirna2genesRelevant = open(self.getTemporalDir() + '/' + filePrefix + "miRNA2Gene_relevant_" + self.date + ".tab", 'w')
+                mirna2genesOutput = open(self.getTemporalDir() + '/' + filePrefix + "miRNA2Gene_output_" + self.date + "_" + randomSeed +  ".tab", 'w')
+                mirna2genesRelevant = open(self.getTemporalDir() + '/' + filePrefix + "miRNA2Gene_relevant_" + self.date + "_" + randomSeed + ".tab", 'w')
 
                 # PRINT HEADER
                 genesToMiRNAFile.write("# Gene name\tmiRNA ID\tDE\tScore\tSelection\n")

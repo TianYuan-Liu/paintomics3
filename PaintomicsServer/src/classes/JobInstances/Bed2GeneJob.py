@@ -28,6 +28,7 @@ from src.conf.serverconf import MAX_WAIT_THREADS #MULTITHREADING
 
 from os import path as os_path, mkdir as os_mkdir
 from csv import reader as csv_reader
+from random import randint
 
 import shutil
 import time
@@ -179,7 +180,7 @@ class Bed2GeneJob(Job):
                     # STEP 2.2 IF LINE LENGTH DOES NOT MATCH WITH EXPECTED NUMBER OF CONDITIONS, ADD ERROR
                     #**************************************************************************************
                     if len(line) != 3:
-                        erroneousLines[nLine] = "   > Line " + str(nLine) + ": expected 3 columns but found " + str(len(line)) + "; "
+                        erroneousLines[nLine] = " - Line " + str(nLine) + ": expected 3 columns but found " + str(len(line)) + "; "
 
                     if len(erroneousLines)  > 9:
                         error +=  " - Too many errors detected while processing " + inputOmic.get("relevantFeaturesFile") + ", skipping remaining lines...\n"
@@ -218,12 +219,12 @@ class Bed2GeneJob(Job):
                             float(line[1])
                         except Exception:
                             if line[0][0] != "#":
-                                erroneousLines[nLine] =  "   > Line " + str(nLine) + ": Header must start with a HASH symbol (#)."
+                                erroneousLines[nLine] =  " - Line " + str(nLine) + ": Header must start with a HASH symbol (#)."
                             continue
 
                     if nConditions == -1:
                         if len(line) < 4:
-                            erroneousLines[nLine] =  "   > Line " + str(nLine) + " expected at least 4 columns, but found one."
+                            erroneousLines[nLine] =  " - Line " + str(nLine) + " expected at least 4 columns, but found one."
                             break
                         nConditions = len(line)
 
@@ -231,7 +232,7 @@ class Bed2GeneJob(Job):
                     # STEP 2.2 IF LINE LENGTH DOES NOT MATCH WITH EXPECTED NUMBER OF CONDITIONS, ADD ERROR
                     #**************************************************************************************
                     if(nConditions != len(line) and len(line)>0):
-                        erroneousLines[nLine] = "   > Line " + str(nLine) + ": expected " +  str(nConditions) + " columns but found " + str(len(line)) + "; "
+                        erroneousLines[nLine] = " - Line " + str(nLine) + ": expected " +  str(nConditions) + " columns but found " + str(len(line)) + "; "
 
                     #**************************************************************************************
                     # STEP 2.2 IF CONTAINS NOT VALID VALUES, ADD ERROR
@@ -361,9 +362,10 @@ class Bed2GeneJob(Job):
                 regionsToGeneFile = open(self.getTemporalDir() + '/regionsToGene.tab', 'w')
                 genesToRegionsFile = open(self.getTemporalDir() + '/genesToRegions.tab', 'w')
                 #TODO: USE JOB DATE
-                fileName = "B2G_output_" + self.date + ".tab"
+                randomSeed = str(randint(0, 1000))
+                fileName = "B2G_output_" + self.date + "_" + randomSeed + ".tab"
                 bed2genesOutput = open(self.getTemporalDir() + '/' + fileName, 'w')
-                fileName = "B2G_relevant_" + self.date + ".tab"
+                fileName = "B2G_relevant_" + self.date + "_" + randomSeed + ".tab"
                 bed2genesRelevant = open(self.getTemporalDir() +  '/' + fileName, 'w')
 
                 #PRINT HEADER

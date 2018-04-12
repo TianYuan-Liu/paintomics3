@@ -212,6 +212,10 @@ Model.prototype = new Observable();
 * @param {Object} data contains all the different options for the dialog configuration
 *
 */
+
+// Global variable used to show or not AJAX errors in the handlers.
+ignoreOtherErrors = false;
+
 function showMessage(title, data) {
 	var message = (data.message || "");
 	var extra = (data.extra || "");
@@ -316,6 +320,9 @@ function showMessage(title, data) {
 					updateDialog(messageDialog);
 
 					$("#messageDialogButton").click(function () {
+						// Restore visualizing AJAX errors
+						ignoreOtherErrors = false;
+						
 						messageDialog.close();
 					});
 					$("#reportErrorButton").click(function () {
@@ -384,7 +391,7 @@ function deleteCredentials() {
 	setTimeout(function(){location.reload(); }, 2000);
 }
 
-ignoreOtherErrors = false;
+
 function ajaxErrorHandler(responseObj) {
 	if (debugging === true)
 		debugger

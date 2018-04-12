@@ -122,7 +122,7 @@ function JobController() {
 			* error message in case that something went wrong.
 			*
 			* If regions are mapped correctly, then we call this function recursively
-			* for the next element in the list, if exits.
+			* for the next element in the list, if exists.
 			* Otherwise, we check if all regions were mapped correctly and, if so, we
 			* call to the normal submission function step1OnFormSubmitHandler.
 			*
@@ -190,9 +190,10 @@ function JobController() {
 							jobView.failedRequests++;
 							jobView.pendingRequests--;
 
-							var response = JSON.parse(action.response.responseText);
+							var response = JSON.parse(response.responseText);
+							var parsedMessage = response.message.replace(/\[b\]/g, "<b>").replace(/\[\/b\]/g, "</b>").replace(/\[br\]/g, "</br>").replace(/\[ul\]/g, "<ul>").replace(/\[\/ul\]/g, "</ul>").replace(/\[li\]/g, "<li>").replace(/\[\/li\]/g, "</li>").replace(/ - /g, "<br/>");
 
-							other.subview.add(Ext.widget({xtype: "box", itemId: "errorMessage", html: '<h3 style="color: #EC696E;  font-size: 20px;"><i class="fa fa-cog fa-spin"></i> Error when processing the request file.<br><span style="font-size:14px;">' + response.message + '</span></h3>'}));
+							other.subview.add(Ext.widget({xtype: "box", itemId: "errorMessage", html: '<h3 style="color: #EC696E;  font-size: 20px;"><i class="fa fa-cog fa-spin"></i> Error when processing the request file.<br><span style="font-size:14px;">' + parsedMessage + '</span></h3>'}));
 
 							if (jobView.pendingRequests === 0) {
 								showErrorMessage("Ops!... Something went wrong during the request files processing.", {
@@ -211,7 +212,7 @@ function JobController() {
 				});
 			};
 
-			showInfoMessage("Uploading BED/miRNA files... (" + jobView.pendingRequests + " pending)", {logMessage: "New Job created, submitting files...", showSpin: true});
+			showInfoMessage("Uploading BED/miRNA files and sending required jobs...", {logMessage: "New Job created, submitting files...", showSpin: true});
 
 			//SEND ALL FORM TO THE QUEUE
 			sendRequest(jobView, specialOmics);

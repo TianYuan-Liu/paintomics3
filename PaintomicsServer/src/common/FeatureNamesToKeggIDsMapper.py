@@ -235,6 +235,14 @@ def mapFeatureNamesToKeggIDs(jobID, organism, databases, featureList, featureEnr
     #     nThreads = min(cpu_count(), MAX_THREADS)        #NUMBER OF THREADS
     # except NotImplementedError as ex:
     #     nThreads = MAX_THREADS
+
+    # Avoid unnecesary calculations when there are no features
+    if len(featureList) < 1:
+        logging.info("NO FEATURES GIVEN. SKIPPING MAPPING - JOB: " + str(jobID))
+
+        return [dict.fromkeys(databases, 0), [], []]
+
+
     nThreads = MAX_THREADS
 
     logging.info("USING " + str(nThreads) + " THREADS")

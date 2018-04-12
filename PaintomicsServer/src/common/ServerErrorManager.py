@@ -54,8 +54,8 @@ def handleException(responseInstance, exceptionInstance, filename, function, res
             file_name = "Unable to get the exception file name"
 
     responseMessage = type(exceptionInstance).__name__ + ": AT " + path.basename(filename) + ": " + function + ". ERROR MESSAGE: " + str(exceptionInstance)
-    if userID != "":
-        responseMessage += ". User ID: " + userID
+    if userID != "" and userID is not None:
+        responseMessage += ". User ID: " + str(userID)
     logging.error(responseMessage)
 
     responseInstance.setStatus(responseStatus)

@@ -364,26 +364,32 @@ class Job(Model):
             #*************************************************************************
             # STEP 4. GENERATE SOME STATISTICS
             #*************************************************************************
-            summary = numpy_percentile(allValues, [0, 10, 25, 50, 75, 90, 100])
 
-            interquartilRange = summary[4] - summary[2]
-            minVal =  summary[2] - 1.5*interquartilRange
-            maxVal =  summary[4] + 1.5*interquartilRange
+            # Avoid numpy calculations on empty files (fails on some versions)
+            # Initialize summary as a zero filled list
+            summary = [0] * 9
+            outliers = []
 
-            outliers= []
-            for i in range(len(allValues)-1,-1,-1):
-                if(allValues[i] < minVal or allValues[i] > maxVal):
-                    outliers.append(allValues[i])
-                    del allValues[i]
+            if len(allValues):
+                summary = numpy_percentile(allValues, [0, 10, 25, 50, 75, 90, 100])
 
-            #TODO: MEJORABLE meter en el bucle anterior
-            try:
-                summary = summary.tolist() + [numpy_min(allValues), numpy_max(allValues)]
-            except:
-                summary = summary + [numpy_min(allValues), numpy_max(allValues)]
+                interquartilRange = summary[4] - summary[2]
+                minVal =  summary[2] - 1.5*interquartilRange
+                maxVal =  summary[4] + 1.5*interquartilRange
+
+                for i in range(len(allValues)-1,-1,-1):
+                    if(allValues[i] < minVal or allValues[i] > maxVal):
+                        outliers.append(allValues[i])
+                        del allValues[i]
+
+                #TODO: MEJORABLE meter en el bucle anterior
+                try:
+                    summary = summary.tolist() + [numpy_min(allValues), numpy_max(allValues)]
+                except:
+                    summary = summary + [numpy_min(allValues), numpy_max(allValues)]
 
             logging.info("DISTRIBUTION FOR " + omicName  + ": MIN: " + str(summary[0])  + "; p10: " + str(summary[1]) + "; q1: " + str(summary[2]) + ";  MEDIAN: " + str(summary[3])+ "; q1: " + str(summary[4])  + "; p90: " + str(summary[5]) + ";  MAX VALUE: " + str(summary[6]))
-            logging.info("DISTRIBUTION FOR " + omicName  + "WITHOUT OUTLIERS: MIN: " + str(summary[7])  + "; MAX: " + str(summary[8])  + "; #OUTLIERS: " + str(len(outliers)))
+            logging.info("DISTRIBUTION FOR " + omicName  + " WITHOUT OUTLIERS: MIN: " + str(summary[7])  + "; MAX: " + str(summary[8])  + "; #OUTLIERS: " + str(len(outliers)))
 
             logging.info("PARSING USER GENE BASED FILE (" + omicName + ")... DONE" )
 
