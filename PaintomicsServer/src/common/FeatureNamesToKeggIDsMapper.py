@@ -178,7 +178,8 @@ def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatur
                         matches[databaseConvertion_name].add(feature.getOmicsValues()[0].getOriginalName() if featureEnrichment else feature.getName())
                         matches["Total"].add(feature.getOmicsValues()[0].getOriginalName() if featureEnrichment else feature.getName())
 
-                        matchedGeneIDsTable[databaseConvertion_id][feature.getName()] = matchedGeneIDsTable[databaseConvertion_id].get(feature.getName(), []) + featureIDs
+                        # Cache is a set (
+                        matchedGeneIDsTable[databaseConvertion_id][feature.getName()] = matchedGeneIDsTable[databaseConvertion_id].get(feature.getName(), set([])).union(set(featureIDs))
 
                         for featureID in featureIDs:
                             feature = feature.clone() #IF MORE THAN 1 MATCH, CLONE THE FEATURE
