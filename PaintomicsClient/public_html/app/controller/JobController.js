@@ -451,17 +451,25 @@ function JobController() {
 	************************************************************/
 	this.step3GetPathwaysNetworkDataHandler = function (jobView) {
 		var me = this;
+		// IndexDB has an async nature so we need to provide a callback
+		var callback = function(networkData) {
+			// Make sure that the time
+			if (networkData !== null && networkData !== undefined && networkData.timestamp > application.timestamp) {
+				jobView.generateNetwork(networkData);
+			} else {
+				//TODO: CHANGE URL
+				$.getJSON(SERVER_URL_GET_PATHWAY_NETWORK + "/" + jobView.getModel().getOrganism(), function (pathwaysNetworkData) {
+					// Set the id key as organism
+					pathwaysNetworkData.id = jobView.getModel().getOrganism();
+					pathwaysNetworkData.timestamp = Math.floor( Date.now() / 1000 );
 
-		if (window.sessionStorage && sessionStorage.getItem("pathwaysNetwork") !== null) {
-			var pathwaysNetworkData = JSON.parse(sessionStorage.getItem("pathwaysNetwork"));
-			jobView.generateNetwork(pathwaysNetworkData);
-		} else {
-			//TODO: CHANGE URL
-			$.getJSON(SERVER_URL_GET_PATHWAY_NETWORK + "/" + jobView.getModel().getOrganism(), function (pathwaysNetworkData) {
-				me.updateStoredApplicationData("pathwaysNetwork", pathwaysNetworkData);
-				jobView.generateNetwork(pathwaysNetworkData);
-			});
-		}
+					me.updateStoredApplicationDataIndexDB("networks", pathwaysNetworkData);
+					jobView.generateNetwork(pathwaysNetworkData);
+				});
+			}
+		};
+		
+		me.getStoredApplicationDataIndexDB("networks", jobView.getModel().getOrganism(), callback);
 	};
     
  	/************************************************************
@@ -1034,6 +1042,40 @@ function JobController() {
 		}
 		application.getMainView().clearSubViews();
 		application.getMainView().showSignInDialog();
+	};
+	
+	this.updateStoredApplicationDataIndexDB = function (storename, data) {
+		
+		var db = new Dexie("paintomics");
+		
+		/* "data" should be prepared to include the following fields */
+		db.version(1).stores({
+			networks: 'id'
+		});
+		
+		db.table(storename).put(data).then(function () {
+			console.log("Data saved using IndexDB");
+		}).catch(function (error) {
+			console.log("Error saving data with IndexDB");
+		});
+		
+	};
+	
+	this.getStoredApplicationDataIndexDB = function (storename, id, callback) {
+		var db = new Dexie("paintomics");
+		
+		/* "data" should be prepared to include the following fields */
+		db.version(1).stores({
+			networks: 'id'
+		});
+		
+		db.table(storename).get(id).then(function (row) {
+			console.log("Registry successfully retrieved from " + storename + " using the id " + id);
+			return callback(row);
+		}).catch(function (error) {
+			console.log("There was an error retrieving from " + storename + " using the id " + id);
+			return callback(null);
+		});
 	};
 
 	this.getCredentialsParams = function (request_params) {

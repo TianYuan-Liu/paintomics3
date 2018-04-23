@@ -44,7 +44,7 @@ function Application() {
     this.controllerInstances = [];
     this.mainView = null;
 	/* Current timestamp for app */
-    this.timestamp = 1517826148;
+    this.timestamp = 1524491415;
 
     this.launch = function () {
         var modelsLocation = "app/model/";
