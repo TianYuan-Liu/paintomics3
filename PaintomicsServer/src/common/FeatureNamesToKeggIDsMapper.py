@@ -143,13 +143,12 @@ def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatur
     client, db  = getConnectionByOrganismCode(organism)
 
     databaseConvertion_ids = map(lambda dbid: db.dbname.find({"dbname": dbid}, {"item": 1, "qty": 1})[0].get("_id"), databases_codes)
-    databaseConvertion_names = map(lambda dbid: db.dbname.find({"dbname": dbid}, {"item": 1, "qty": 1, "display_label": 1})[0].get("display_label"), databases_codes)
     databaseGeneSymbol_id = db.dbname.find({"dbname": databaseConvertion[1]}, {"item":1, "qty":1})[0].get("_id")
 
     try:
 
         # Save the found features for each database, plus the unique between them
-        matches = dict.fromkeys(databaseConvertion_names + ["Total"], set())
+        matches = {db: set() for db in databases + ["Total"]}
         matchedGeneIDsTable = defaultdict(dict)
         matchedGeneSymbolsTable = defaultdict(dict)
 
@@ -167,7 +166,7 @@ def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatur
 
             if feature.getName() != "" and feature.getName()!= None:
                 # Repeat for each database found
-                for databaseConvertion_id, databaseConvertion_name in itertools.izip(databaseConvertion_ids, databaseConvertion_names):
+                for databaseConvertion_id, databaseConvertion_name in itertools.izip(databaseConvertion_ids, databases):
                     featureIDs, found = findKeggIDByFeatureName(jobID, feature.getName(), organism, db, databaseConvertion_id)
 
                     if(found == True):
@@ -178,7 +177,7 @@ def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatur
                         matches[databaseConvertion_name].add(feature.getOmicsValues()[0].getOriginalName() if featureEnrichment else feature.getName())
                         matches["Total"].add(feature.getOmicsValues()[0].getOriginalName() if featureEnrichment else feature.getName())
 
-                        # Cache is a set (
+                        # Cache is a set
                         matchedGeneIDsTable[databaseConvertion_id][feature.getName()] = matchedGeneIDsTable[databaseConvertion_id].get(feature.getName(), set([])).union(set(featureIDs))
 
                         for featureID in featureIDs:

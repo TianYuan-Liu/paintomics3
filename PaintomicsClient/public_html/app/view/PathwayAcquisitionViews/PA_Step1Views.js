@@ -320,25 +320,29 @@ function PA_Step1JobView() {
 							}]
 						},
 						{
-							xtype: "textfield", 
-							fieldLabel: "Enter a job description", 
-							allowBlank: true,
-							name: 'jobDescription',
-							style: "margin: 10px 20px;",
-							labelWidth: 150,
-							width: 650,
-							flex: 0,
-							maxLength: 100
-						}
-						/*{xtype: "container", layout: { type: "vbox", align: "stretch" }, flex: 0.6, hidden: true, items: [
+							xtype: "container", layout: { type: "vbox", align: "stretch" }, flex: 0.5, items: [
+							{
+								xtype: "textfield", 
+								fieldLabel: "Enter a job description", 
+								allowBlank: true,
+								name: 'jobDescription',
+								style: "margin: 10px 20px;",
+								labelWidth: 150,
+								width: 650,
+								flex: 0,
+								maxLength: 100
+							},
+							{
+								xtype: "container", layout: { type: "vbox", align: "stretch" }, flex: 0.6, hidden: false, items: [
 								{
 									xtype: 'checkboxgroup', fieldLabel: 'Databases',
 									style: "margin: 10px 10px 10px 20px;",
-									maxWidth: 450,
+									maxWidth: 650,
 									allowBlank: false,
 									columns: 2,
-									disabled: true,
-									// Hardcoded DBs (they can be considered static) 
+									disabled: false,
+									labelWidth: 148,
+									// Hardcoded DBs (as they can be considered static) 
 									items: [
 											// Only for information, KEGG database is added always on server side 
 											{ boxLabel: 'KEGG (required)', name: 'databases[]', inputValue: 'KEGG', checked: true, disabled: true },
@@ -347,12 +351,15 @@ function PA_Step1JobView() {
 								},
 								{
 									xtype: "box", flex: 1, html:
-									'<span class="infoTip" style=" font-size: 12px; margin-left: 140px; margin-bottom: 10px;">'+
+									'<span class="infoTip" style=" font-size: 12px; margin: 0 20px 10px 190px;">'+
 									' For <span style="color: rgb(211, 21, 108);">some</span> species more than one database might be available. Choose which ones do you want to include in the analysis.' +
 									'</span>'
 								}
+								]
+							}
 							]
-						}*/]
+						}
+						]
 					},
 					/*{
 							xtype: "container",

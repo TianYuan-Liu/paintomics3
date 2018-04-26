@@ -137,7 +137,7 @@ function JobInstance(jobID) {
 			// ES6/ES2015
 			this.databases = [...new Set(pathways.map(item => item.getSource()))];
 		}
-		return this.databases;
+		return this.databases.sort();
 	}
 	this.setDatabases = function (databases) {
 		this.databases = databases;

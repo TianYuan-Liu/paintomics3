@@ -103,9 +103,7 @@ def pathwayAcquisitionStep1_PART1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID, EXA
             jobInstance.setOrganism(specie)
             # Check the available databases for species
             organismDB = set(dicDatabases.get(specie, [{}])[0].keys())
-            # TODO: disabled multiple databases for the moment
-            # jobInstance.setDatabases(list(set([u'KEGG']) | set(databases).intersection(organismDB)))
-            jobInstance.setDatabases([u'KEGG'])
+            jobInstance.setDatabases(list(set([u'KEGG']) | set(databases).intersection(organismDB)))
             logging.info("STEP1 - SELECTED SPECIE IS " + specie)
 
             logging.info("STEP1 - READING FILES....")

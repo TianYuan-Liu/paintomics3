@@ -97,12 +97,7 @@ function PA_Step2JobView() {
 			var totalFeatures = dataDistribution[omicName][1];
 			var isCompoundBased = (compoundOmics.indexOf(omicName) > -1);
 
-			// Add the largest matched set of features or just KEGG if there is only 1 DB
-			
-			/*
-			
-			TODO: when re-enabling this code, make sure that the server returns 'KEGG' instead of 'Entrez Gene ID' as total
-			
+			// Add the largest matched set of features or just KEGG if there is only 1 DB		
 			if (dataDistribution[omicName][0].hasOwnProperty("Total")) {
 				totalFeatures += dataDistribution[omicName][0]["Total"];
 			} else {
@@ -118,7 +113,7 @@ function PA_Step2JobView() {
 						"matched": dataDistribution[omicName][0][featureTable],
 						"percentage": Math.ceil(dataDistribution[omicName][0][featureTable]/totalFeatures * 100)
 					}});
-			});*/
+			});
 			
 			if ( ! isCompoundBased) {
 				numberOfClusters.push({
