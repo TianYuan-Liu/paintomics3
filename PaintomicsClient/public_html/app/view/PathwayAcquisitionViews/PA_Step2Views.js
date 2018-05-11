@@ -551,6 +551,8 @@ function PA_OmicSummaryPanel(omicName, dataDistribution, isCompoundOmic) {
 					if (! isCompoundOmic) {
 						// Mapped features can differ between used databases
 						mappedInfo = me.dataDistribution[0];
+						
+						added_info = "";
 
 						if (! Object.keys(mappedInfo).length) {
 							mappedFeatures = mappedInfo;

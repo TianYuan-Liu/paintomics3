@@ -526,7 +526,10 @@ function JobController() {
                 	pathwayTableView.updatePvaluesFromStore();
 				}                
             },
-            failure: ajaxErrorHandler
+            error: function() {
+				//ajaxErrorHandler
+				console.log(error)
+			}
         });
         
         
