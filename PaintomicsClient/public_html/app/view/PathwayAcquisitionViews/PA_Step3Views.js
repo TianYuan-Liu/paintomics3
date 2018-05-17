@@ -1586,8 +1586,10 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 				$("#networkClustersContainer_" + me.dbid + " h5").text(clusterNumber + " Clusters found from " + totalClusters + " in total.");
 				//Generate the images and the containers
 				var img_path;
+				var db_suffix = (me.dbid != "KEGG" ? "_" + me.dbid.toLowerCase(): '');
+								 
 				for(var cluster in CLUSTERS){
-					img_path = SERVER_URL_GET_CLUSTER_IMAGE + "/" + this.getModel().getJobID() + "/output/" + visualOptions.colorBy + "_cluster_" + cluster + ".png";
+					img_path = SERVER_URL_GET_CLUSTER_IMAGE + "/" + this.getModel().getJobID() + "/output/" + visualOptions.colorBy + "_cluster_" + cluster + db_suffix + ".png";
 					htmlCode+= '<span class="networkClusterImage" name="'+ cluster + '"><i class="fa fa-eye-slash fa-2x"></i><img src="' + img_path +'"><p><i class="fa fa-square" style="color:' + CLUSTERS[cluster] +'"></i> Cluster ' + cluster + '</p></span>';
 				}
 				$("#networkClustersContainer_" + me.dbid + " div").html(htmlCode);			
@@ -1896,9 +1898,10 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 			var me = this;
 			var numberClusters = $("#sliderClusterNumberShow_" + me.dbid).html();
 			var omicName = me.getParent().visualOptions[me.dbid].colorBy;
+			var databaseName = me.dbid;
 			
 			if (numberClusters && omicName !== "classification") {
-				me.getParent().controller.updateMetagenesSubmitHandler(me, numberClusters, omicName);
+				me.getParent().controller.updateMetagenesSubmitHandler(me, numberClusters, omicName, databaseName);
 			}
 		};
 

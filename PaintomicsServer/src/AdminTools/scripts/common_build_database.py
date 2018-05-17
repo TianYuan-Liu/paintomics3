@@ -1197,8 +1197,16 @@ def processMapManPathwaysData():
     #***********************************************************************************
     #* GET THE NUMBER OF GENES FOR EACH PATHWAY
     #***********************************************************************************
-    for path_id, gene_ids in pathway2gene.items():
-        NODES[path_id]["data"]["total_features"] = len(gene_ids)
+    mapman_g2p_file = DATA_DIR + "gene2pathway_mapman.list"
+
+    # Write a "gene2pathway_mapman.list" to be used for metagenes generation.
+    with open(mapman_g2p_file, 'w') as mapman_gene2pathway:
+        for path_id, gene_ids in pathway2gene.items():
+            NODES[path_id]["data"]["total_features"] = len(gene_ids)
+
+            # Write one row for each gene and pathway
+            mapman_gene2pathway.writelines(str(geneID) + "\t" + str(path_id) + "\n" for geneID in gene_ids)
+
 
     #***********************************************************************************
     #* BULK THE MATRIX INTO JSON:

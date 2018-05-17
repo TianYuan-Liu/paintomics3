@@ -730,7 +730,7 @@ class PathwayAcquisitionJob(Job):
 
 
     #GENERATE METAGENES LIST FUNCTIONS -----------------------------------------------------------------------------------------
-    def generateMetagenesList(self, ROOT_DIRECTORY, clusterNumber, omicList=None):
+    def generateMetagenesList(self, ROOT_DIRECTORY, clusterNumber, omicList=None, database=None):
         """
         This function obtains the metagenes for each pathway in KEGG based on the input values.
 
@@ -742,36 +742,48 @@ class PathwayAcquisitionJob(Job):
 
         # STEP 2. GENERATE THE DATA FOR EACH OMIC DATA TYPE
         filtered_omics = self.geneBasedInputOmics
+        filtered_databases = self.getDatabases()
 
         if omicList:
             filtered_omics = [inputOmic for inputOmic in self.geneBasedInputOmics if inputOmic.get("omicName") in omicList]
 
+        if database:
+            filtered_databases = set(database).intersection(set(filtered_databases))
+
         for inputOmic in filtered_omics:
             try:
-                # STEP 2.1 EXECUTE THE R SCRIPT
-                logging.info("GENERATING METAGENES INFORMATION...CALLING")
-                inputFile = self.getTemporalDir() +  "/" + inputOmic.get("omicName") + '_matched.txt'
-                # Select number of clusters, default to dynamic
-                kClusters = str(dict(clusterNumber).get(inputOmic.get("omicName"), "dynamic"))
-                check_call([
-                    ROOT_DIRECTORY + "common/bioscripts/generateMetaGenes.R",
-                    '--specie="' + self.getOrganism() +'"',
-                    '--input_file="' + inputFile  + '"',
-                    '--output_prefix="'+ inputOmic.get("omicName") + '"',
-                    '--data_dir="'+ self.getTemporalDir() + '"',
-                    '--kegg_dir="'+ KEGG_DATA_DIR + '"',
-                    '--sources_dir="' + ROOT_DIRECTORY + '/common/bioscripts/"',
-                    '--kclusters="' + kClusters + '"' if kClusters.isdigit() else ''], stderr=STDOUT)
-                # STEP 2.2 PROCESS THE RESULTING FILE
+                # STEP 2.1 EXECUTE THE R SCRIPT FOR EACH DATABASE
+                for dbname in filtered_databases:
+                    logging.info("GENERATING METAGENES INFORMATION FOR " + str(dbname) + "...CALLING")
+                    inputFile = self.getTemporalDir() +  "/" + inputOmic.get("omicName") + '_matched.txt'
+                    # Select number of clusters, default to dynamic
+                    kClusters = str(dict(clusterNumber).get(inputOmic.get("omicName"), "dynamic"))
+                    check_call([
+                        ROOT_DIRECTORY + "common/bioscripts/generateMetaGenes.R",
+                        '--specie="' + self.getOrganism() +'"',
+                        '--input_file="' + inputFile  + '"',
+                        '--output_prefix="'+ inputOmic.get("omicName") + '"',
+                        '--data_dir="'+ self.getTemporalDir() + '"',
+                        '--kegg_dir="'+ KEGG_DATA_DIR + '"',
+                        '--sources_dir="' + ROOT_DIRECTORY + '/common/bioscripts/"',
+                        '--kclusters="' + kClusters + '"' if kClusters.isdigit() else '',
+                        '--database="' + dbname + '"' if dbname != "KEGG" else ''], stderr=STDOUT)
+                    # STEP 2.2 PROCESS THE RESULTING FILE
 
-                # Reset all pathways metagenes for the omic
-                map(lambda pathway: pathway.resetMetagenes(inputOmic.get("omicName")), self.matchedPathways.values())
+                    # Reset all pathways metagenes for the omic
+                    for pathway in self.matchedPathways.values():
+                        # Only reset metagenes for current DB
+                        if pathway.getSource().lower() == dbname:
+                            pathway.resetMetagenes(inputOmic.get("omicName"))
 
-                with open(self.getTemporalDir() + "/" + inputOmic.get("omicName") + "_metagenes.tab", 'rU') as inputDataFile:
-                    for line in csv_reader(inputDataFile, delimiter="\t"):
-                        if self.matchedPathways.has_key(line[0]):
-                            self.matchedPathways.get(line[0]).addMetagenes(inputOmic.get("omicName"), {"metagene": line[1], "cluster": line[2], "values" : line[3:] })
-                inputDataFile.close()
+                    metagenesFileName = self.getTemporalDir() + "/" + inputOmic.get("omicName") + "_metagenes" +\
+                                        ("_" + str(dbname).lower() + ".tab" if dbname != "KEGG" else ".tab")
+
+                    with open(metagenesFileName, 'rU') as inputDataFile:
+                        for line in csv_reader(inputDataFile, delimiter="\t"):
+                            if self.matchedPathways.has_key(line[0]):
+                                self.matchedPathways.get(line[0]).addMetagenes(inputOmic.get("omicName"), {"metagene": line[1], "cluster": line[2], "values" : line[3:] })
+                    inputDataFile.close()
             except CalledProcessError as ex:
                 logging.error("STEP2 - Error while generating metagenes information for " + inputOmic.get("omicName"))
 

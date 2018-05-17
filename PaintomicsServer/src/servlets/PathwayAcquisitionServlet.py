@@ -733,6 +733,7 @@ def pathwayAcquisitionMetagenes_PART1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID,
 
             omicName = REQUEST.form.get("omic")
             clusterNumber = int(REQUEST.form.get("number"))
+            database = REQUEST.form.get("database")
 
             # Make sure the number of clusters is inside [1, 20]
             clusterNumber = 1 if clusterNumber < 1 else 20 if clusterNumber > 20 else clusterNumber
@@ -742,7 +743,7 @@ def pathwayAcquisitionMetagenes_PART1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID,
             # ************************************************************************
             QUEUE_INSTANCE.enqueue(
                 fn=pathwayAcquisitionMetagenes_PART2,
-                args=(ROOT_DIRECTORY, userID, savedJobInstance, omicName, clusterNumber, RESPONSE),
+                args=(ROOT_DIRECTORY, userID, savedJobInstance, omicName, clusterNumber, database, RESPONSE),
                 timeout=600,
                 job_id=JOB_ID
             )
@@ -759,7 +760,7 @@ def pathwayAcquisitionMetagenes_PART1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID,
         finally:
             return RESPONSE
 
-def pathwayAcquisitionMetagenes_PART2(ROOT_DIRECTORY, userID, savedJobInstance, omicName, clusterNumber, RESPONSE):
+def pathwayAcquisitionMetagenes_PART2(ROOT_DIRECTORY, userID, savedJobInstance, omicName, clusterNumber, database, RESPONSE):
     #VARIABLE DECLARATION
     jobID  = ""
     userID = ""
@@ -769,7 +770,7 @@ def pathwayAcquisitionMetagenes_PART2(ROOT_DIRECTORY, userID, savedJobInstance, 
         # Step 3. Save the visual Options in the MongoDB
         #************************************************************************
         logging.info("UPDATE METAGENES - STEP 2 FOR JOB " + jobID + "..." )
-        savedJobInstance.generateMetagenesList(ROOT_DIRECTORY, {omicName: clusterNumber}, [omicName])
+        savedJobInstance.generateMetagenesList(ROOT_DIRECTORY, {omicName: clusterNumber}, [omicName], [database])
         logging.info("UPDATE METAGENES - STEP 2 FOR JOB " + jobID + "...DONE")
         JobInformationManager().storePathways(savedJobInstance)
 
@@ -787,6 +788,8 @@ def pathwayAcquisitionMetagenes_PART2(ROOT_DIRECTORY, userID, savedJobInstance, 
     except Exception as ex:
         handleException(RESPONSE, ex, __file__ , "pathwayAcquisitionMetagenes_PART2", userID=userID)
     finally:
+        savedJobInstance.cleanDirectories()
+
         return RESPONSE
 
 def pathwayAcquisitionAdjustPvalues(request, response):

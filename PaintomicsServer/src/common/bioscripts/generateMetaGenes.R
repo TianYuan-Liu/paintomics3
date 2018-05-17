@@ -23,6 +23,7 @@ if("--help" %in% args) {
       --cutoff=someValue       - numerical, cutoff for the PCA Function (optional, default 0.3)
       --cluster=someValue      - character, clustering method (kmeans or hierarchical),  (optional, default hierarchical)
       --kclusters=someValue    - numerical, number of clusters for K-means (optional, default calculated dinamically)
+      --database=someValue     - character, name of the database (optional, default KEGG)
 
       --help                 - print this text
  
@@ -52,7 +53,13 @@ if(is.null(args$cluster)) {
   args$cluster <- "kmeans"
 }
 
-args$kegg_dir <- paste(args$kegg_dir, "current/", args$specie, "/gene2pathway.list", sep="")
+if(is.null(args$database)) {
+  args$database <- ""
+} else {
+  args$database <- paste("_", tolower(args$database), sep="")
+}
+
+args$kegg_dir <- paste(args$kegg_dir, "current/", args$specie, "/gene2pathway", args$database, ".list", sep="")
 
 
 # LOAD DEPENDENCIES   --------------------------------------------------------------------------------------------
@@ -68,13 +75,18 @@ sel = "single%"
 
 #LOAD DATA    ---------------------------------------------------------------------------------------------------
 cat("STEP 3. Load input data, ")
+dir.create(args$data_dir, showWarnings = FALSE)
 setwd(args$data_dir)
 # Read the reference file
-genes2pathway <- read.table(file=args$kegg_dir, header=FALSE, sep="\t", quote="", as.is=TRUE)
-genes2pathway <-data.frame(lapply(genes2pathway, function(v) {
-  if (is.character(v)) return(tolower(v))
-  else return(v)
-}))
+genes2pathway <- data.frame(read.table(file=args$kegg_dir, header=FALSE, sep="\t", quote="", as.is=TRUE))
+# genes2pathway <-data.frame(lapply(genes2pathway, function(v) {
+#   # if (is.character(v)) return(tolower(v))
+#   # else return(v)
+#   return(v)
+# }))
+
+# Lower gene names only
+genes2pathway[,1] <- tolower(genes2pathway[,1])
 
 # Read the input file
 # Example 
@@ -83,8 +95,12 @@ input_data <- read.table(file=args$input_file, header=FALSE, quote="\t")
 # Remove duplicates 
 # TODO: now we are just ignoring the duplicates and taking the first match, maybe we should calculate mean?
 input_data <- input_data[!duplicated(input_data$V3),]
-# Adapt input data to a data.frame object 
-input_data <- data.frame(input_data[,4:ncol(input_data)], row.names=paste(args$specie, ":", tolower(input_data[,3]), sep=""))
+# Adapt input data to a data.frame object
+if (args$database == "") {
+  input_data <- data.frame(input_data[,4:ncol(input_data)], row.names=paste(args$specie, ":", tolower(input_data[,3]), sep=""))
+} else {
+  input_data <- data.frame(input_data[,4:ncol(input_data)], row.names=tolower(input_data[,3]))
+}
 
 #genes2pathway[which(genes2pathway[,1] %in% rownames(input_data)),]
 # GET METAGENES  ------------------------------------------------------------------------------------------------
@@ -221,7 +237,7 @@ for (i in 1:args$kclusters){
   #GET THE VALUES FOR THESE PATHWAYS
   values <- data[pathway_ids,]
   #CREATE THE PNG
-  png(paste(args$output_prefix, "_cluster_", i, ".png", sep=""), height = 150, width = 150)
+  png(paste(args$output_prefix, "_cluster_", i, args$database, ".png", sep=""), height = 150, width = 150)
   par(mai = rep(0, 4), mar = rep(0.8, 4))
   
   if(length(row.names(values)) > 1){
@@ -257,7 +273,9 @@ for (i in 1:args$kclusters){
 rownames(metagenes) <- gsub("_", "\t", gsub("path:", "", rownames(metagenes)))
 
 #Save table to file
-write.table(metagenes[, c(ncol(metagenes), 1:(ncol(metagenes) - 1))], file=paste(args$output_prefix, "metagenes.tab", sep="_"), quote = FALSE, sep="\t", col.names = FALSE)
-
-
-
+if (args$database == "") {
+  output_file = paste(args$output_prefix, "metagenes.tab", sep="_")
+} else {
+  output_file = paste(args$output_prefix, "metagenes", paste0(substring(args$database, 2), ".tab"), sep="_")
+}
+write.table(metagenes[, c(ncol(metagenes), 1:(ncol(metagenes) - 1))], file=output_file, quote = FALSE, sep="\t", col.names = FALSE)

@@ -747,7 +747,7 @@ function JobController() {
 	* @param {type} jobView
 	* @returns {undefined}
 	************************************************************/
-	this.updateMetagenesSubmitHandler = function (jobView, numberClusters, omicName) {
+	this.updateMetagenesSubmitHandler = function (jobView, numberClusters, omicName, databaseName) {
 		if (parseInt(numberClusters) > 0) {
 			var me = this;
 			var jobModel = jobView.getModel();
@@ -760,7 +760,8 @@ function JobController() {
 				data: {
 					jobID: jobModel.getJobID(),
 					number: numberClusters,
-					omic: omicName
+					omic: omicName,
+					database: databaseName
 				},
 				success: function (response) {
 					if (response.success) {
