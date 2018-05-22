@@ -575,7 +575,7 @@ def getSpecieMappingData(specie, downloadLog, dirName, step, scriptsDir):
                 raise Exception("Error while calling " + scriptsDir + specie + "_resources/download_others.py" +": Exit status " + str(exc.returncode) + ". Output is available at " + downloadLog)
 
         #we tolerate that some of the files fail on download
-        error_tolerance= 2
+        error_tolerance= 3
         try:
             downloadKEGGFile("             * KEGG TO NCBI GeneID", downloadLog,  "http://rest.kegg.jp/conv/"+ specie +"/ncbi-geneid", dirName, "ncbi-geneid2kegg.list",  DOWNLOAD_DELAY_1, MAX_TRIES_1)
         except Exception as e:
