@@ -78,6 +78,10 @@ class PathwayAcquisitionJobDAO(DAO):
         #auxDAO = PathwayDAO(dbManager=self.dbManager)
         #auxDAO.insertAll(jobInstance.getMatchedPathways().values(), {"jobID": jobInstance.getJobID()})
 
+        # Increase stats
+        for counterID in ["jobID", jobInstance.getOrganism()]:
+            self.dbManager.getCollection("counters").update({'_id': counterID}, {'$inc': { 'counter': 1}}, upsert = True)
+
         return True
 
     def update(self, instance, otherParams=None):
