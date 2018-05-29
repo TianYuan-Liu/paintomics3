@@ -288,17 +288,19 @@ class PathwayAcquisitionJob(Job):
         try:
             logging.info("PROCESSING GENE BASED FILES..." )
             for inputOmic in self.geneBasedInputOmics:
-                [omicName, omicSummary] = self.parseGeneBasedFiles(inputOmic)
+                [omicName, omicSummary, omicHeader] = self.parseGeneBasedFiles(inputOmic)
                 logging.info("   * PROCESSED " + omicName + "..." )
                 inputOmic["omicSummary"] = omicSummary
+                inputOmic["omicHeader"] = omicHeader
             logging.info("PROCESSING GENE BASED FILES...DONE" )
 
             logging.info("PROCESSING COMPOUND BASED FILES..." )
             checkBoxesData=[]
             for inputOmic in self.compoundBasedInputOmics:
-                [omicName, checkBoxesData, omicSummary]  = self.parseCompoundBasedFile(inputOmic, checkBoxesData)
+                [omicName, checkBoxesData, omicSummary, omicHeader]  = self.parseCompoundBasedFile(inputOmic, checkBoxesData)
                 logging.info("   * PROCESSED " + omicName + "..." )
                 inputOmic["omicSummary"] = omicSummary
+                inputOmic["omicHeader"] = omicHeader
             #REMOVE REPETITIONS AND ORDER ALPHABETICALLY
             # checkBoxesData = unifyAndSort(checkBoxesData, lambda checkBoxData: checkBoxData["title"].lower())
             checkBoxesData = unifyAndSort(checkBoxesData, lambda checkBoxData: checkBoxData.getTitle().lower())

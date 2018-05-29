@@ -40,6 +40,7 @@ function JobInstance(jobID) {
 	this.geneBasedInputOmics = null;
 	this.compoundBasedInputOmics = null;
 
+	this.omicsHeaders = null;
 	this.omicsValues = null;
 	this.omicsValuesID = null;
 	this.foundCompounds = [];
@@ -225,6 +226,18 @@ function JobInstance(jobID) {
 		//TODO: CHECK CLASSES?
 		this.foundCompounds.push(compoundSet);
 	};
+	this.getOmicHeaders = function(omicName = null) {	
+		if (this.omicHeaders == null) {
+			
+			this.omicHeaders = {};
+			
+			this.getGeneBasedInputOmics().concat(this.getCompoundBasedInputOmics()).map(function(currentValue, index, omics) {
+				this.omicHeaders[currentValue["omicName"]] = currentValue["omicHeader"];
+			}.bind(this));
+		}
+		
+		return this.omicHeaders;
+	};
 	this.updatePathway = function (pathway) {
 		for (var i in this.pathways) {
 			if (pathway.getID() == this.pathways[i].getID()) {
@@ -318,7 +331,7 @@ function JobInstance(jobID) {
 				if (omicsAux[i].omicSummary === undefined) {
 					showWarningMessage("No information about min/max available.", {
 						message: "The current job instance do not include information about min/max values for each omic type.</br>" +
-						"A possible explanataion for this issue could be that the data was generated using an older version of Paintomics.</br>" +
+						"A possible explanation for this issue could be that the data was generated using an older version of Paintomics.</br>" +
 						"Instead of using the percentiles 10 and 90 for each omics as reference to obtain the colors for the heatmap, Paintomics" +
 						" will calculate locally the min / max for each omics for each selected pathway."
 					});

@@ -288,7 +288,7 @@ class Job(Model):
         if os_path.isfile(valuesFileName):
             with open(valuesFileName, 'rU') as inputDataFile:
                 nLine = 0
-                geneAux = omicValueAux = None
+                geneAux = omicValueAux = fileHeader = None
                 for line in csv_reader(inputDataFile, delimiter="\t"):
                     nLine = nLine+1
                     #*************************************************************************
@@ -298,6 +298,8 @@ class Job(Model):
                         try:
                             float(line[1])
                         except Exception:
+                            # If there is a header, save it
+                            fileHeader = line
                             continue
                     else:
                         #*************************************************************************
@@ -398,7 +400,7 @@ class Job(Model):
 
             #   0        1       2    3    4    5     6,   7   8      9        10
             #[MAPPED, UNMAPPED, MIN, P10, Q1, MEDIAN, Q3, P90, MAX, MIN_IR, Max_IR]
-            return [omicName, [foundFeatures, totalInputFeatures - totalMapped] + summary ]
+            return [omicName, [foundFeatures, totalInputFeatures - totalMapped] + summary, fileHeader ]
 
         else:
             logging.error("PARSING USER GENE BASED FILE (" + omicName + ")... FAILED. File " + valuesFileName + " NOT FOUND")
@@ -443,7 +445,7 @@ class Job(Model):
             #READ THE FILE LINE BY LINE, CREATE A TEMPORAL COMPOUND WITH THE INFO
             with open(valuesFileName, 'rU') as inputDataFile:
                 nLine = 0
-                compoundAux = omicValueAux = None
+                compoundAux = omicValueAux = fileHeader = None
                 for line in csv_reader(inputDataFile, delimiter="\t"):
                     nLine = nLine+1
                     #*************************************************************************
@@ -453,6 +455,8 @@ class Job(Model):
                         try:
                             float(line[1])
                         except Exception:
+                            # If there is a header, save it
+                            fileHeader = line
                             continue
                     else:
                         #STEP 2.C.1 CREATE A NEW OMIC VALUE WITH ROW DATA
@@ -508,7 +512,7 @@ class Job(Model):
 
             # TODO: changed to assign the foundFeatures/notMatchedFeatures but they are not the same as the raw data (duplicated compounds?)
             # return [omicName, checkBoxesData  + list(parsedFeatures), [-1,-1] + summary ]
-            return [omicName, checkBoxesData + list(parsedFeatures), [foundFeatures, len(notMatchedFeatures)] + summary]
+            return [omicName, checkBoxesData + list(parsedFeatures), [foundFeatures, len(notMatchedFeatures)] + summary, fileHeader]
         else:
             logging.error("PARSING USER COMPOUND BASED FILE (" + omicName + ")... FAILED. File " + valuesFileName + " NOT FOUND")
 

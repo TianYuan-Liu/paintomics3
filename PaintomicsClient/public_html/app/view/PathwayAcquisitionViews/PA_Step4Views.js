@@ -1561,7 +1561,7 @@ function PA_Step4KeggDiagramFeatureView(showButtons) {
 			'      <a href="javascript:void(0)" class="button twoOptionsButton" name="line-chart">Line chart</a>'+
 			"  </div>" +
 			"  <div class='step4-tooltip-plot-container selected' name='heatmap-chart'>" +
-			"    <div id='" + this.getComponent().getId() + "_heatmapcontainer' name='heatmap-chart' style='height:"+ divHeight+ "px;width: 230px;overflow:hidden;overflow-y:auto;'></div>" +
+			"    <div id='" + this.getComponent().getId() + "_heatmapcontainer' name='heatmap-chart' style='height:"+ divHeight+ "px;width: 255px;overflow:hidden;overflow-y:auto;padding-right: 15px;'></div>" +
 			"  </div>" +
 			"  <div class='step4-tooltip-plot-container' name='line-chart' style='display:none;'>" +
 			"    <div id='" + this.getComponent().getId() + "_plotcontainer' style='height:"+ divHeight+ "px;width: 230px;'></div>" +
@@ -1792,6 +1792,8 @@ function PA_Step4KeggDiagramFeatureView(showButtons) {
 			
 		// Calculate the height based on number of Y elements
 		var chartHeight = Math.max(y * 40, 80);
+		
+		var headers = this.getParent("PA_Step4JobView").getModel().getOmicHeaders();
 
 		var heatmap = new Highcharts.Chart({
 			chart: {type: 'heatmap',renderTo: divID, height: chartHeight},
@@ -1802,6 +1804,14 @@ function PA_Step4KeggDiagramFeatureView(showButtons) {
 				borderColor: "#333",
 				formatter: function() {
 					var title = this.point.series.name.split("#");
+					var omicHeader = headers[title[0].replace('*', '')] || [];
+					
+					if (omicHeader[this.point.index + 1]) {
+						var headerField = omicHeader[this.point.index + 1];
+						
+						title[0] += " [" + (headerField.length > 20 ? headerField.substring(0, 18) + '...' : headerField) + "]";
+					}
+					
 					title[1] = (title.length > 1) ? title[1] : "";
 					return "<b>" + title[0].replace("*", '<i class="relevantFeature"></i>') + "</b><br/>" + "<i class='tooltipInputName'>" + title[1] + "</i>" + (this.point.value === null ? "No data" : this.point.value);
 				},
