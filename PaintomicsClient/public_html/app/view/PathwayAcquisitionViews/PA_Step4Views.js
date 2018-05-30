@@ -1804,12 +1804,25 @@ function PA_Step4KeggDiagramFeatureView(showButtons) {
 				borderColor: "#333",
 				formatter: function() {
 					var title = this.point.series.name.split("#");
-					var omicHeader = headers[title[0].replace('*', '')] || [];
+					var omicHeader = headers[title[0].replace('*', '').trim()] || [];
 					
 					if (omicHeader[this.point.index + 1]) {
 						var headerField = omicHeader[this.point.index + 1];
 						
-						title[0] += " [" + (headerField.length > 20 ? headerField.substring(0, 18) + '...' : headerField) + "]";
+						// Truncate the words of the title to allow viewing 
+						// the whole tooltip inside the window.
+						if (title[0].length + headerField.length > 30) {
+							
+							// Truncate omic name
+							title[0] = title[0].substring(0, 12) + '...'
+							
+							// If the header name is still too long, truncate also
+							if (headerField.length + 10 > 30) {
+								headerField = headerField.substring(0, 20) + '...'
+							}
+						}
+						
+						title[0] += " [" + headerField + "]";
 					}
 					
 					title[1] = (title.length > 1) ? title[1] : "";
