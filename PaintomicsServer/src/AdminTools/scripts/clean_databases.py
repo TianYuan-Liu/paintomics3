@@ -184,6 +184,8 @@ def remindJobByJobID(connection, user_id, job_id, ROOT_DIRECTORY):
         message += "<p><a target='_blank' href='http://bioinfo.cipf.es/paintomics/?jobID=" + job_id + "'>http://bioinfo.cipf.es/paintomics/?jobID=" + job_id + "</a></p></br>"
         message += "<div style='width:100%; height:10px; border-top: 1px dotted #333; margin-top:20px; margin-bottom:30px;'></div>"
         message += "<p>Problems? E-mail <a href='mailto:" + "paintomics@cipf.es" + "'>" + "paintomics@cipf.es" + "</a></p>"
+        message += "<p>Legal notice: you are receiving this e-mail because you accepted Paintomics conditions. Your data will be stored for the"
+        message += "solely purpose of informing you about actions involving your jobs."
         message += '</body></html>'
 
         sendEmail(ROOT_DIRECTORY_CORRECTED, user_data["email"], user_data["userName"], "Paintomics 3: one job is going to expire soon",

@@ -127,7 +127,7 @@ function UserController() {
         * @returns {undefined}
         */
         this.signUpLinkClickHandler = function (userView) {
-            var userViewsDialog = this.getUserViewsDialog(440, 520);
+            var userViewsDialog = this.getUserViewsDialog(440, 600);
 
             userViewsDialog.setLoading(true);
             var signUpPanel = new SignUpPanel();

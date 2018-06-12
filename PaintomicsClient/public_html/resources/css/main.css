@@ -780,6 +780,31 @@ div.availableOmicsBox h4 {
 	border: 1px solid #E9E9E9;
 }
 
+#additionalInfoContainer {
+	margin: 10px auto;
+}
+
+#additionalInfoContainer div.content {
+	color: #222;
+	height: auto;
+	border: 1px solid #E9E9E9;
+	margin: 50px auto;
+	padding: 15px;
+}
+
+#additionalInfoContainer div.content h5 {
+	color: black;
+	text-align: center;
+	font-size: 20px;
+    display: flex;
+    align-items: center;
+	justify-content: center;
+}
+
+#additionalInfoContainer div.content h5 i {
+	margin-right: 5px;
+}
+
 /********************************************************************************
 **STYLES FOR STEP 2
 *********************************************************************************/
@@ -1740,4 +1765,13 @@ div.lateralOptionsPanel-header .toolbarOption {
 #mainViewCenterPanel.mobileMode div.metaboliteBox,
 div.omicSummaryBox.expandedBox, div.metaboliteBox.expandedBox{
 	width: 100%;
+}
+
+/********************************************************************************
+** REGISTRATION FORM
+*********************************************************************************/
+#dataProtection {
+	height: 80px;
+	width: 100%;
+	overflow: auto;
 }

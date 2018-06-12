@@ -14,3 +14,4 @@ PaintomicsServer/src/examplefiles.bak*
 *.orig
 .tags*
 PaintomicsServer/src/data*
+PaintomicsClient/public_html/index_cipf.html

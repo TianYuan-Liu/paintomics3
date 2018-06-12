@@ -254,7 +254,7 @@ function PA_Step1JobView() {
 				'   <b>Paintomics</b>  is a web tool for the integrative visualization of multiple omic datasets onto KEGG pathways. Currently Paintomics supports integrated visualization of multiple species of different biological kingdoms and offers user the possibility to request any other organism present in the KEGG database.<br/><br/>' +
 				'   <b>Paintomics</b> is easy to run because the application itself guides you through the three different steps that are detailed next:' +
 				' </p>' +
-				' <ul> ' +
+				' <ul style="float: left;width: 65%;"> ' +
 				'   <li><b>Data uploading:</b>' +
 				'	<ol>' +
 				'		<li>Choose your organism (see selection box below).</li>' +
@@ -264,7 +264,8 @@ function PA_Step1JobView() {
 				'   <li><b>Identifier and Name Matching and Metabolite assignment:</b> Paintomics requires Entrez IDs for working with KEGG pathways, so the tool will convert the names and identifiers from different sources and databases in user’s the input data. This screen give users information about the number of features successfully mapped to KEGG pathways. It also shows the data distribution that will be used for pathway colouring, which can be modified when visualizing a pathway. Additionally, the metabolite names assignments are displayed and users can choose their favourite option in case of ambiguity. Click <a href="javascript:void(0)" class="button btn-success btn-inline btn-small"><i class="fa fa-play"></i> Next step</a> button when you are ready.<br/><br/></li>' +
 				'   <li><b>Results:</b> Pathways summary, Pathways classification, Pathways network, Pathways enrichment, Pathways visualization (by clicking <a href="javascript:void(0)" class="button btn-inline btn-small"  style="background-color:#ADA6A6;font-size: 14px;"><i class="fa fa-paint-brush"></i></a> for any of the displayed pathways in Pathways enrichment section). Read more about these analyses in <a href="http://paintomics.readthedocs.io/en/latest/" target="_blank">our documentation</a>.</li>' +
 				' </ul>' +
-				' <p>' +
+				' <div id="graphicalAbstract" style="float:left;text-align:center;cursor:pointer;width: 34%;"><img style="margin: 30px auto;border:1px solid #222;" src="resources/images/GraphicalAbstract_thumb.png" /></div>' +
+				' <p style="clear:both;">' +
 				'   Please check the <b><a href="http://paintomics.readthedocs.org/en/latest/" target="_blank">User guide</a></b> for further information. For any question on <b>Paintomics</b>, you can send an e-mail to <a href="mailto:paintomics@cipf.es">paintomics@cipf.es</a>.' +
 				' </p>' +
 				'</div>'
@@ -378,7 +379,7 @@ function PA_Step1JobView() {
 					}*/,
 					{
 						xtype: "box",
-						html: '<h3>2. Choose the files to upload <a class="button btn-right btn-small" href="http://bioinfo.cipf.es/paintomics/resources/paintomics_example_data.zip"><i class="fa fa-download"></i> Download example data</a></h3>'
+						html: '<h3>2. Choose the files to upload <a class="button btn-right btn-small" href="http://www.paintomics.org/resources/paintomics_example_data.zip"><i class="fa fa-download"></i> Download example data</a></h3>'
 					},
 					{
 						xtype: "container",
@@ -409,6 +410,19 @@ function PA_Step1JobView() {
 								{xtype: 'box',html: '<h2  style="text-align:center;">Selected omics</h2>'},
 								{xtype: 'box',html: '<p class="dragHerePanel">Drag and drop here your selected <i>omics</i></p>'}
 							]
+						},
+				   		{
+							xtype: "container",
+							id: "additionalInfoContainer",
+							minHeight: 150,
+							minWidth: 200,
+							maxWidth: 300,
+							margin: 10,
+							flex: 1,
+							layout: {type: 'vbox',align: "stretch"},
+							items: [
+								{xtype: 'box',html: '<div class="content"><h5><i class="fa fa-info-circle" style="color: #2C7FDD; font-size: 50px;"></i> Help</h5><p>Drag and drop omics from <i>"Available"</i> to <i>"Selected"</i> area or click the <i class="fa fa-plus-circle"  style="font-size: 18px;"></i> button.</p><p>If you do not need them, delete with with <i class="fa fa-trash" style="font-size: 18px;"></i>.</p><p>Once you are done, click on the "Run PaintOmics" button on the upper-right corner.</p><p>Make sure to <span style="text-decoration: underline;">choose an organism</span> from the select box first!</p></div>.'}
+							]
 						}]
 					}					
 				]
@@ -434,6 +448,20 @@ function PA_Step1JobView() {
 					$(".availableOmicsBox a").click(function(){
 						var type = $(this).parents(".availableOmicsBox").first().attr("title");
 						me.addNewOmicSubmittingPanel(type);
+					});
+			
+					$("#graphicalAbstract").click(function(){
+						var imageWindow = new Ext.Window({
+							modal:true,
+							border:false,
+							plain:true,
+							width: '80%',
+							height: '90%',
+							constrain:true,
+							html:'<img style="margin: 0 auto;max-height:100%; max-width:100%;" src="resources/images/GraphicalAbstract.png" />',
+							resizable:{preserveAspectRatio: true}
+						});
+						imageWindow.show();
 					});
 
 					var containers = [$("#availableOmicsContainer")[0], $("#submittingPanelsContainer-targetEl")[0]];

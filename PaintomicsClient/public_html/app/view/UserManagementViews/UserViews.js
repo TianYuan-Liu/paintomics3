@@ -190,6 +190,13 @@ function SignUpPanel() {
      * OTHER FUNCTIONS
      ***********************************************************************/
     this.signUpButtonClick = function () {
+		
+		if (! Ext.getCmp("conditionsCheckbox").checked) {
+			$('#invalidSignUpMessage').html('You must accept the conditions to register.').fadeIn();
+		} else {
+			$('#invalidSignUpMessage').fadeOut();
+		}
+		
         this.getController().signUpButtonClickHandler(this);
     };
     this.signUpCloseButtonClick = function () {
@@ -229,7 +236,7 @@ function SignUpPanel() {
                                 {xtype: "textfield", name: 'password2', fieldLabel: 'Confirm Password', inputType: 'password', submitValue: false, allowBlank: false,
                                     validator: function (value) {
                                         if ($("input[name=password]").val() != value) {
-                                            return "Password do not match!";
+                                            return "Passwords do not match!";
                                         }
                                         return true;
                                     }
@@ -237,8 +244,9 @@ function SignUpPanel() {
                                 {xtype: "textfield", name: 'userName', fieldLabel: 'Your name or nickname', allowBlank: false},
                                 {xtype: "textfield", name: 'affiliation', fieldLabel: 'Your Affiliation '},
                                 {xtype: "box", html: '<p class="formNode">Please let us know your university, research centre or company and the department or institute.</p>'},
+								{xtype: "box", html: '<iframe id="dataProtection" src="conditions_iframe.html"></iframe>'},
+								{xtype: "checkboxfield", name: 'conditions', id: 'conditionsCheckbox', allowBlank: false, submitValue: true, boxLabel: '<span > I have read the  <a href="conditions.html" target="_blank" id="conditionsSignup">rules, conditions and privacy policy</a>.</span><br />'},
                                 {xtype: "box", html: '<div style="color: #D22; font-size: 16px;" id="invalidSignUpMessage" style="display:none"></div>' +
-								 			'<span >By signing up, you declare to have read and accepted <a href="conditions.html" target="_blank" id="conditionsSignup">the terms</a>.</span>' +
                                             '<a class="button exampleButton" id="signUpButton" style=" width: 100%; text-align: center; margin: 10px 0px; "><i class="fa fa-sign-in"></i> Sign me up!</a>' +
                                             '<a id="signUpBackLink" href="javascript:void(0)"><i class="fa fa-arrow-circle-o-left"></i> Back</a>'
                                 }

@@ -217,7 +217,7 @@ function JobController() {
 			//SEND ALL FORM TO THE QUEUE
 			sendRequest(jobView, specialOmics);
 		} else {
-			showErrorMessage("Invalid form. Please check form errors.", {height: 150, width: 400});
+			showErrorMessage("Invalid form. Please check form errors.", {height: 150, width: 400, showReportButton:true});
 			return false;
 		}
 	};
@@ -308,7 +308,7 @@ function JobController() {
 				failure: extJSErrorHandler
 			});
 		} else {
-			showErrorMessage("Invalid form. Please check form errors.", {height: 150, width: 400, showReportButton:false});
+			showErrorMessage("Invalid form. Please check form errors. <br/><br/>Also, please make sure to <span style='color: auto;text-decoration: underline;'>select an organism.</span>", {height: 150, width: 400, showReportButton:false});
 			return false;
 		}
 	};
