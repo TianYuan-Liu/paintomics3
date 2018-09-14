@@ -186,8 +186,43 @@ function UserController() {
         * @returns {undefined}
         */
         this.forgotPassLinkClickHandler = function (userView) {
-            alert("Not implemented yet");
+			var userViewsDialog = this.getUserViewsDialog(300, 330);
+
+			var forgetPasswordPanel = new ForgetPasswordPanel();
+			forgetPasswordPanel.setController(this);
+			userViewsDialog.removeAll();
+			userViewsDialog.add(forgetPasswordPanel.getComponent());
+			userViewsDialog.setLoading(false);
+			userViewsDialog.show();
         };
+	
+	
+    /**
+    * This function send to server the request to reset the password.
+    *
+    * @param {panel} userView
+    */
+    this.forgotPassButtonClickHandler = function (userView) {
+        var signInForm = userView.getComponent().queryById("signInForm");
+        if (signInForm.isValid()) {
+            $.ajax({
+                type: "GET",
+                url: SERVER_URL_UM_RESETPASSWORD,
+                data: signInForm.getForm().getValues(),
+                success: function (response) {
+                    if (response.success === false) {
+                        $("#invalidEmailMessage").html(response.message.split("ERROR MESSAGE:")[1]);
+                        $("#invalidUserPainvalidEmailMessagessMessage").fadeIn();
+                        return;
+                    }
+					
+					$("#invalidEmailMessage").html('E-mail sent, please check your inbox for instructions.').css('color', 'green').fadeIn();
+                    },
+                    error: ajaxErrorHandler
+                });
+            }
+        };
+
 
         /**
         *

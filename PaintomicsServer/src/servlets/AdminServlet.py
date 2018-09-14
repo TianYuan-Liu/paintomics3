@@ -632,7 +632,7 @@ def adminServletSendReport(request, response, ROOT_DIRECTORY):
             type = "Other request"
 
         message = '<html><body>'
-        message +=  "<a href='" + "http://bioinfo.cipf.es/paintomics/" + "' target='_blank'>"
+        message +=  "<a href='" + "http://www.paintomics.org/" + "' target='_blank'>"
         message += "  <img src='cid:image1' border='0' width='auto' height='50' alt='Paintomics 3 logo'>"
         message += "</a>"
         message += "<div style='width:100%; height:10px; border-top: 1px dotted #333; margin-top:20px; margin-bottom:30px;'></div>"

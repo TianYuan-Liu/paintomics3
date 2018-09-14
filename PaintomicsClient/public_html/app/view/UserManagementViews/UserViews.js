@@ -157,7 +157,7 @@ function SignInPanel() {
               listeners: {
                   afterrender: function () {
                       $("#forgotPassLink").click(function () {
-                          me.signInButtonClick();
+                          me.forgotPassLinkClick();
                       });
                       $(".signUpLink").click(function () {
                           me.signUpLinkClick();
@@ -280,6 +280,67 @@ function SignUpPanel() {
     return this;
 }
 SignUpPanel.prototype = new View;
+
+
+function ForgetPasswordPanel() {
+    /*********************************************************************
+     * ATTRIBUTES
+     ***********************************************************************/
+    this.name = "ForgetPasswordPanel";
+    /*********************************************************************
+     * OTHER FUNCTIONS
+     ***********************************************************************/
+    this.resetButtonClick = function () {
+        this.getController().forgotPassButtonClickHandler(this);
+    };
+	this.forgetPasswordBackLinkClick = function () {
+		this.getController().signInLinkClickHandler();
+	};
+
+    this.initComponent = function () {
+        var me = this;
+        this.component = Ext.widget(
+                {xtype: "container", layout: {type: 'vbox', align: 'stretch'}, flex: 1,
+                  items: [
+                          {xtype: 'form', itemId: "signInForm", flex: 1, border: 0,
+                              layout: {type: 'vbox', align: 'stretch'}, defaults: {labelAlign: "top", border: false}, style: {padding: "10px"},
+                              items: [
+                                  {xtype: "box", html: '<h2>Reset Password</h2><p>If you do not remember your password please enter your address and we will send you an e-mail containing instructions to reset your password.'},
+                                  {xtype: "textfield", name: 'userEmail', fieldLabel: 'Email Address', vtype: 'email', value: Ext.util.Cookies.get('lastEmail'), allowBlank: false,
+								   		listeners: {
+                                          specialkey: function (field, e) {
+                                              if (e.getKey() === e.ENTER) {
+                                                  me.resetButtonClick();
+                                              }
+                                          }
+                                      }},
+                                  {xtype: "box", html:
+                                              '<div style="color: #D22; font-size: 16px;" id="invalidEmailMessage" style="display:none"></div>' +
+                                              '<a class="button exampleButton" id="resetPassLink" style=" width: 195px; text-align: center; margin: 10px 54px; display: block;"><i class="fa fa-sign-in"></i> Reset password</a>' +
+								   			  '<a id="forgetPasswordBackLink" href="javascript:void(0)"><i class="fa fa-arrow-circle-o-left"></i> Back</a>'
+                                  }
+                              ]
+                          }
+                      ]
+              ,
+              listeners: {
+                  afterrender: function () {
+                      $("#resetPassLink").click(function () {
+                          me.resetButtonClick();
+                      });
+					  
+					  $("#forgetPasswordBackLink").click(function () {
+                      	  me.forgetPasswordBackLinkClick();
+					  });
+                  }
+              }
+		}
+        );
+        return this.component;
+    };
+    return this;
+}
+ForgetPasswordPanel.prototype = new View;
 
 function GuestSessionPanel(email, p) {
     /*********************************************************************

@@ -52,6 +52,7 @@ SERVER_URL_UM_SIGNUP = SERVER_URL + "um_signup";
 SERVER_URL_UM_CHANGEPASS = SERVER_URL + "um_changepassword";
 SERVER_URL_UM_NEWGUESTSESSION = SERVER_URL + "um_guestsession";
 SERVER_URL_UM_NEWNOLOGINSESSION = SERVER_URL + "um_nologinsession";
+SERVER_URL_UM_RESETPASSWORD = SERVER_URL + "um_resetpassword";
 /*********************************************************************
  * OTHER SETTINGS            *****************************************
  **********************************************************************/

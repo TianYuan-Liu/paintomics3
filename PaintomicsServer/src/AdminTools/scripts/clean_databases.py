@@ -174,14 +174,14 @@ def remindJobByJobID(connection, user_id, job_id, ROOT_DIRECTORY):
         user_data = connection[MONGODB_DATABASE]['userCollection'].find_one({"userID": user_id})
 
         message = '<html><body>'
-        message += "<a href='" + "http://bioinfo.cipf.es/paintomics/" + "' target='_blank'>"
-        message += "  <img src='" + "http://bioinfo.cipf.es/paintomics/" + "resources/images/paintomics_white_300x66' border='0' width='150' height='33' alt='Paintomics 3 logo'>"
+        message += "<a href='" + "http://www.paintomics.org/" + "' target='_blank'>"
+        message += "  <img src='" + "http://www.paintomics.org/" + "resources/images/paintomics_white_300x66' border='0' width='150' height='33' alt='Paintomics 3 logo'>"
         message += "</a>"
         message += "<div style='width:100%; height:10px; border-top: 1px dotted #333; margin-top:20px; margin-bottom:30px;'></div>"
         message += "<h1>Your Paintomics job " + job_id + " will be deleted soon!</h1>"
         message += "<p>Hello, " + user_data["userName"] + "! Your job with ID " + job_id + " will be deleted in one week.</p>"
         message += "<p>To avoid it, please visit the following link to update the accession date:</p>"
-        message += "<p><a target='_blank' href='http://bioinfo.cipf.es/paintomics/?jobID=" + job_id + "'>http://bioinfo.cipf.es/paintomics/?jobID=" + job_id + "</a></p></br>"
+        message += "<p><a target='_blank' href='http://www.paintomics.org//?jobID=" + job_id + "'>http://www.paintomics.org/?jobID=" + job_id + "</a></p></br>"
         message += "<div style='width:100%; height:10px; border-top: 1px dotted #333; margin-top:20px; margin-bottom:30px;'></div>"
         message += "<p>Problems? E-mail <a href='mailto:" + "paintomics@cipf.es" + "'>" + "paintomics@cipf.es" + "</a></p>"
         message += "<p>Legal notice: you are receiving this e-mail because you accepted Paintomics conditions. Your data will be stored for the"

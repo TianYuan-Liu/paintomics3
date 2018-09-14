@@ -35,6 +35,8 @@ class User (Model):
         self.creation_date = ""
         self.last_login = ""
         self.is_guest = False
+        self.resetToken = None
+        self.resetPassword = None
 
     #******************************************************************************************************************
     # GETTERS AND SETTER
@@ -98,3 +100,15 @@ class User (Model):
 
     def setIsGuest(self, is_guest):
         self.is_guest = is_guest
+
+    def getResetToken(self):
+        return self.resetToken
+
+    def setResetToken(self, token):
+        self.resetToken = token
+
+    def getResetPassword(self):
+        return self.resetPassword
+
+    def setResetPassword(self, password):
+        self.resetPassword = password

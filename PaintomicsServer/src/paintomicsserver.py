@@ -148,13 +148,13 @@ class Application(object):
         def signInHandler():
             return userManagementSignIn(request, Response()).getResponse()
         #*******************************************************************************************
-        ##* LOGOUT
+        ##* SIGN OUT
         #*******************************************************************************************
         @self.app.route(SERVER_SUBDOMAIN + '/um_signout', methods=['OPTIONS', 'POST'])
         def signOutHandler():
             return userManagementSignOut(request, Response()).getResponse()
         #*******************************************************************************************
-        ##* LOGOUT
+        ##* SIGN UP
         #*******************************************************************************************
         @self.app.route(SERVER_SUBDOMAIN + '/um_signup', methods=['OPTIONS', 'POST'])
         def signUpHandler():
@@ -166,7 +166,7 @@ class Application(object):
         def newGuestSessionHandler():
             return userManagementNewGuestSession(request, Response()).getResponse()
         #*******************************************************************************************
-        ##* LOGOUT
+        ##* NO USER SESSION
         #*******************************************************************************************
         @self.app.route(SERVER_SUBDOMAIN + '/um_nologinsession', methods=['OPTIONS', 'POST'])
         def newNoLoginSessionHandler():
@@ -177,6 +177,12 @@ class Application(object):
         @self.app.route(SERVER_SUBDOMAIN + '/um_changepassword', methods=['OPTIONS', 'POST'])
         def changePasswordHandler():
             return userManagementChangePassword(request, Response()).getResponse()
+        #*******************************************************************************************
+        ##* RESET PASSWORD
+        #*******************************************************************************************
+        @self.app.route(SERVER_SUBDOMAIN + '/um_resetpassword', methods=['OPTIONS', 'GET'])
+        def resetPasswordHandler():
+            return userManagementResetPassword(request, Response(), self.ROOT_DIRECTORY).getResponse()
         #*******************************************************************************************
         ##* USER MANAGEMENT SERVLETS HANDLERS - END
         #******************************************************************************************

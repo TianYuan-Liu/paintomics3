@@ -29,6 +29,8 @@ from src.common.UserSessionManager import UserSessionManager
 from src.common.ServerErrorManager import handleException, CredentialException
 from src.common.Util import sendEmail, adapt_string
 
+from flask import url_for
+
 def userManagementSignIn(request, response):
     #VARIABLE DECLARATION
     userInstance = None
@@ -160,15 +162,15 @@ def userManagementSignUp(request, response, ROOT_DIRECTORY):
         try:
             #TODO: SERVER ADDRESS AND ADMIN EMAIL
             message = '<html><body>'
-            message +=  "<a href='" + "http://bioinfo.cipf.es/paintomics/" + "' target='_blank'>"
-            message += "  <img src='" + "http://bioinfo.cipf.es/paintomics/" + "resources/images/paintomics_white_300x66' border='0' width='150' height='33' alt='Paintomics 3 logo'>"
+            message +=  "<a href='" + "http://www.paintomics.org/" + "' target='_blank'>"
+            message += "  <img src='" + "http://www.paintomics.org/" + "resources/images/paintomics_white_300x66' border='0' width='150' height='33' alt='Paintomics 3 logo'>"
             message += "</a>"
             message += "<div style='width:100%; height:10px; border-top: 1px dotted #333; margin-top:20px; margin-bottom:30px;'></div>"
             message += "<h1>Welcome to Paintomics 3!</h1>"
             message += "<p>Thanks for joining, " + userInstance.getUserName() + "! You're already able to work with Paintomics.</p>"
             message += "<p>Your user name is as follows:</p>"
             message += "<p><b>Username:</b> " + userInstance.getEmail() + "</p></br>"
-            message += "<p>Login in to Paintomics 3 at </p><a href='" + "http://bioinfo.cipf.es/paintomics/" + "'>" + "http://bioinfo.cipf.es/paintomics/" + "</a>"
+            message += "<p>Login in to Paintomics 3 at </p><a href='" + "http://www.paintomics.org/" + "'>" + "http://www.paintomics.org/" + "</a>"
             message += "<div style='width:100%; height:10px; border-top: 1px dotted #333; margin-top:20px; margin-bottom:30px;'></div>"
             message += "<p>Problems? E-mail <a href='mailto:" + "paintomics@cipf.es" + "'>" + "paintomics@cipf.es" + "</a></p>"
             message += '</body></html>'
@@ -311,6 +313,84 @@ def userManagementChangePassword(request, response):
         handleException(response, ex, __file__, "userManagementChangePassword", 200)
     except Exception as ex:
         handleException(response, ex, __file__, "userManagementChangePassword")
+    finally:
+        if (daoInstance != None):
+            daoInstance.closeConnection()
+    return response
+
+def userManagementResetPassword(request, response, ROOT_DIRECTORY):
+    # VARIABLE DECLARATION
+    userInstance = None
+    daoInstance = None
+
+    try:
+        #****************************************************************
+        # Step 1. CHECK THE PROVIDED DATA
+        #****************************************************************
+        logging.info("STEP0 - CHECK IF VALID EMAIL...")
+        userEmail = request.values.get('userEmail')
+        emailToken  = request.values.get('emailToken', None)
+
+        daoInstance = UserDAO()
+        userInstance = daoInstance.findByEmail(userEmail)
+        if userInstance == None:
+            raise CredentialException("The entered e-mail is not registered in the database.")
+
+        # If the request already has a token, check that it matches the
+        # database and change the password.
+        # If not, generate one and send an e-mail.
+        if not emailToken:
+            import random, string
+
+            emailToken = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(50))
+            randomPassword = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+
+            userInstance.setResetToken(emailToken)
+            userInstance.setResetPassword(randomPassword)
+
+            daoInstance.update(userInstance, {})
+
+            # Send e-mail
+            try:
+
+                restoreLink = url_for('resetPasswordHandler', emailToken = emailToken, userEmail = userEmail)
+
+                #TODO: SERVER ADDRESS AND ADMIN EMAIL
+                message = '<html><body>'
+                message +=  "<a href='" + "http://www.paintomics.org/" + "' target='_blank'>"
+                message += "  <img src='" + "http://www.paintomics.org/" + "resources/images/paintomics_white_300x66' border='0' width='150' height='33' alt='Paintomics 3 logo'>"
+                message += "</a>"
+                message += "<div style='width:100%; height:10px; border-top: 1px dotted #333; margin-top:20px; margin-bottom:30px;'></div>"
+                message += "<h1>Reset your Paintomics 3 acccount password</h1>"
+                message += "<p>You have requested to reset your account password, if not, please ignore this e-mail.</p>"
+                message += "<p>To restore your account please follow this link:</p>"
+                message += "<p><a href=\"" + restoreLink + "\">Reset password link</a></p>"
+                message += "<div style='width:100%; height:10px; border-top: 1px dotted #333; margin-top:20px; margin-bottom:30px;'></div>"
+                message += "<p>Problems? E-mail <a href='mailto:" + "paintomics@cipf.es" + "'>" + "paintomics@cipf.es" + "</a></p>"
+                message += '</body></html>'
+
+                sendEmail(ROOT_DIRECTORY, userEmail, userInstance.getUserName(), "Reset password for Paintomics 3 account", message, isHTML=True)
+            except Exception:
+                logging.error("Failed to send the reset password email.")
+
+        else:
+            if emailToken != userInstance.getResetToken():
+                raise CredentialException("The provided reset token does not match with the one in the database.")
+
+            from hashlib import sha1
+
+            userInstance.setPassword(sha1(userInstance.getResetPassword().encode('ascii')).hexdigest())
+            userInstance.setResetPassword(None)
+            userInstance.setResetToken(None)
+
+            daoInstance.update(userInstance, {})
+
+        response.setContent({"success": True})
+
+    except CredentialException as ex:
+        handleException(response, ex, __file__, "userManagementResetPassword", 200)
+    except Exception as ex:
+        handleException(response, ex, __file__, "userManagementResetPassword")
     finally:
         if (daoInstance != None):
             daoInstance.closeConnection()
