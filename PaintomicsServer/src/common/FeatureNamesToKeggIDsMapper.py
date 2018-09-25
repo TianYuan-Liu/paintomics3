@@ -138,12 +138,19 @@ def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatur
     databaseConvertion = getDatabasesByOrganismCode(organism)
 
     # Remove the user not-selected databases
-    databases_codes = [dbid for dbname, dbid in databaseConvertion[0].iteritems() if dbname in databases]
+    # databases_codes = [dbid for dbname, dbid in databaseConvertion[0].iteritems() if dbname in databases]
+
+    gene_databases = databaseConvertion[0]
+    symbol_databases = databaseConvertion[1]
 
     client, db  = getConnectionByOrganismCode(organism)
 
-    databaseConvertion_ids = map(lambda dbid: db.dbname.find({"dbname": dbid}, {"item": 1, "qty": 1})[0].get("_id"), databases_codes)
-    databaseGeneSymbol_id = db.dbname.find({"dbname": databaseConvertion[1]}, {"item":1, "qty":1})[0].get("_id")
+    databaseConvertion_ids = {dbname: db.dbname.find({"dbname": gene_databases.get(dbname)}, {"item": 1, "qty": 1})[0].get("_id") for dbname in databases}
+    databaseGeneSymbol_ids = {dbname: db.dbname.find({"dbname": symbol_databases.get(dbname)}, {"item": 1, "qty": 1})[0].get("_id") for dbname in databases}
+    #
+    # databaseConvertion_ids = map(lambda dbid: db.dbname.find({"dbname": dbid}, {"item": 1, "qty": 1})[0].get("_id"), databases_codes)
+    # databaseGeneSymbol_ids = map(lambda dbid: db.dbname.find({"dbname": dbid}, {"item": 1, "qty": 1})[0].get("_id"), symbol_databases)
+    # databaseGeneSymbol_id = db.dbname.find({"dbname": databaseConvertion[1]}, {"item":1, "qty":1})[0].get("_id")
 
     try:
 
@@ -164,10 +171,17 @@ def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatur
                     prev = aux
                     print "Processed " + str(prev) + "% of " + str(total) + " total features"
 
-            if feature.getName() != "" and feature.getName()!= None:
+            # Store the original feature name as the first iteration in the database might override the properties
+            originalName = feature.getName()
+
+            if originalName != "" and originalName != None:
                 # Repeat for each database found
-                for databaseConvertion_id, databaseConvertion_name in itertools.izip(databaseConvertion_ids, databases):
-                    featureIDs, found = findKeggIDByFeatureName(jobID, feature.getName(), organism, db, databaseConvertion_id)
+                # for databaseConvertion_id, databaseConvertion_name in itertools.izip(databaseConvertion_ids, databases):
+                for databaseConvertion_name in databases:
+                    databaseConvertion_id = databaseConvertion_ids.get(databaseConvertion_name)
+                    databaseGeneSymbol_id = databaseGeneSymbol_ids.get(databaseConvertion_name)
+
+                    featureIDs, found = findKeggIDByFeatureName(jobID, originalName, organism, db, databaseConvertion_id)
 
                     if(found == True):
                         # matches+=1
@@ -178,21 +192,26 @@ def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatur
                         matches["Total"].add(feature.getOmicsValues()[0].getOriginalName() if featureEnrichment else feature.getName())
 
                         # Cache is a set
-                        matchedGeneIDsTable[databaseConvertion_id][feature.getName()] = matchedGeneIDsTable[databaseConvertion_id].get(feature.getName(), set([])).union(set(featureIDs))
+                        matchedGeneIDsTable[databaseConvertion_id][originalName] = matchedGeneIDsTable[databaseConvertion_id].get(originalName, set([])).union(set(featureIDs))
+
+                        # Remove the feature from not matched features in case in wasn't found in
+                        # the previous database (when multiple databases are selected)
+                        if feature in notMatchedFeatures:
+                            notMatchedFeatures.remove(feature)
 
                         for featureID in featureIDs:
-                            feature = feature.clone() #IF MORE THAN 1 MATCH, CLONE THE FEATURE
-                            feature.setID(featureID)
-                            feature.setMatchingDB(databaseConvertion_id)
+                            featureClone = feature.clone() #IF MORE THAN 1 MATCH, CLONE THE FEATURE
+                            featureClone.setID(featureID)
+                            featureClone.setMatchingDB(databaseConvertion_name)
 
                             featureName, found = findGeneSymbolByFeatureID(jobID, featureID, organism, db, databaseConvertion_id, databaseGeneSymbol_id)
                             if found == False:
-                                featureName=feature.getName()
+                                featureName=featureClone.getName()
                             else:
                                 matchedGeneSymbolsTable[databaseConvertion_id][featureID] = featureName
 
-                            feature.setName(featureName)
-                            matchedFeatures.append(feature)
+                                featureClone.setName(featureName)
+                            matchedFeatures.append(featureClone)
                     else:
                         notMatchedFeatures.append(feature)
 

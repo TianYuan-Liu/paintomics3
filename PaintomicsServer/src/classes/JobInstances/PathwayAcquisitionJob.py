@@ -544,7 +544,7 @@ class PathwayAcquisitionJob(Job):
         counterNames = defaultdict(lambda : defaultdict(bool))
         for features in self.getInputCompoundsData().values() + self.getInputGenesData().values():
             for omicValue in features.getOmicsValues():
-                # Two enrichment methods avaible: gene and feature enrichment.
+                # Two enrichment methods available: gene and feature enrichment.
                 # By default use gene enrichment unless specified otherwise.
                 if enrichmentByOmic[omicValue.getOmicName()] is True:
                     counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] = (counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] or omicValue.isRelevant())

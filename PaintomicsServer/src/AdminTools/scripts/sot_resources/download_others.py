@@ -19,6 +19,7 @@ COMMON_BUILD_DB_TOOLS.EXTERNAL_RESOURCES = imp.load_source('download_conf',  ROO
 
 SERVER_SETTINGS = imp.load_source('serverconf.py',  ROOT_DIR + "../conf/serverconf.py")
 
+
 #**************************************************************************
 # CHANGE THE CODE FROM HERE
 #

@@ -348,6 +348,7 @@ function PA_Step1JobView() {
 											// Only for information, KEGG database is added always on server side 
 											{ boxLabel: 'KEGG (required)', name: 'databases[]', inputValue: 'KEGG', checked: true, disabled: true },
 											{ boxLabel: 'MapMan', name: 'databases[]', inputValue: 'MapMan', checked: false },
+											{ boxLabel: 'Reactome', name: 'databases[]', inputValue: 'Reactome', checked: false },
 									]
 								},
 								{

@@ -91,15 +91,15 @@ genes2pathway[,1] <- tolower(genes2pathway[,1])
 # Read the input file
 # Example 
 # ENSMUSG00000034875	Nudt19	110959	0.0013615644203	-0.00727757835919	-0.015612884896	-0.0444182798681	-0.132208079869	-0.163256775828
-input_data <- read.table(file=args$input_file, header=FALSE, quote="\t")
+input_data <- read.table(file=args$input_file, header=FALSE, sep="\t", quote="")
 # Remove duplicates 
 # TODO: now we are just ignoring the duplicates and taking the first match, maybe we should calculate mean?
 input_data <- input_data[!duplicated(input_data$V3),]
 # Adapt input data to a data.frame object
 if (args$database == "") {
-  input_data <- data.frame(input_data[,4:ncol(input_data)], row.names=paste(args$specie, ":", tolower(input_data[,3]), sep=""))
+  input_data <- data.frame(input_data[,5:ncol(input_data)], row.names=paste(args$specie, ":", tolower(input_data[,3]), sep=""))
 } else {
-  input_data <- data.frame(input_data[,4:ncol(input_data)], row.names=tolower(input_data[,3]))
+  input_data <- data.frame(input_data[,5:ncol(input_data)], row.names=tolower(input_data[,3]))
 }
 
 #genes2pathway[which(genes2pathway[,1] %in% rownames(input_data)),]

@@ -248,7 +248,7 @@ class Job(Model):
     def processFilesContent(self):
         raise NotImplementedError()
 
-    def parseGeneBasedFiles(self, inputOmic):
+    def  parseGeneBasedFiles(self, inputOmic):
         """
         This function...
 
@@ -348,7 +348,7 @@ class Job(Model):
                 #TODO: HACER ESTE METODO MULTITHREADING -> locker
                 for parsedFeature in parsedFeatures:
                     self.addInputGeneData(parsedFeature)
-                    matchedFeaturesFileContent += parsedFeature.getOmicsValues()[0].getInputName() + '\t' + parsedFeature.getName() + '\t' + parsedFeature.getID() +  '\t' + '\t'.join(map(str,parsedFeature.getOmicsValues()[0].getValues())) + "\n"
+                    matchedFeaturesFileContent += parsedFeature.getOmicsValues()[0].getInputName() + '\t' + parsedFeature.getName() + '\t' + parsedFeature.getID() +  '\t' + parsedFeature.getMatchingDB() +  '\t' + '\t'.join(map(str,parsedFeature.getOmicsValues()[0].getValues())) + "\n"
 
                 for parsedFeature in notMatchedFeatures:
                     notMatchedFeaturesFileContent += parsedFeature.getName() + '\t' + '\t' + '\t'.join(map(str,parsedFeature.getOmicsValues()[0].getValues())) + "\n"
