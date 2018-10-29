@@ -3817,7 +3817,7 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 				var me = this;
 				this.component = Ext.widget({
 					xtype: 'container', cls: "contentbox", items: [
-						{xtype: 'box', flex: 1, html: '<h2>Pathway enrichment</h2>'},
+						{xtype: 'box', flex: 1, html: '<h2 id="pathwayEnrichmentSection">Pathway enrichment</h2>'},
 						{
 							xtype: "livesearchgrid", itemId: 'pathwaysGridPanel',
 							searchFor: "title",

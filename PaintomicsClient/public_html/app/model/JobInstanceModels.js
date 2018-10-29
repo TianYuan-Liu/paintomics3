@@ -129,7 +129,17 @@ function JobInstance(jobID) {
         var omicNames = this.getGeneBasedInputOmics().concat(this.getCompoundBasedInputOmics()).map(x => x.omicName);
         
         return omicNames;
-    };
+	};
+	this.getGeneOmicNames = function() {
+        var omicNames = this.getGeneBasedInputOmics().map(x => x.omicName);
+        
+        return omicNames;
+	};
+	this.getCompoundOmicNames = function() {
+        var omicNames =this.getCompoundBasedInputOmics().map(x => x.omicName);
+        
+        return omicNames;
+	};
 	this.getDatabases = function() {
 		if (! this.databases || ! this.databases.length) {
 			// Check databases present in pathways

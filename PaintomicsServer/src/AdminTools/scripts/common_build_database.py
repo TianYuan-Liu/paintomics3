@@ -1095,6 +1095,9 @@ def processMapManPathwaysData():
                         "id": "",
                         "x": int(child.get("x")),
                         "y": int(child.get("y")),
+                        "width": int(child.get("width", 0)),
+                        "height": int(child.get("height", 0)),
+                        "title": child.get("title", None),
                         "blockFormat": child.get("blockFormat"),
                         "type": child.get("type"),
                         "visualizationType": child.get("vistualizationType"),
@@ -1337,7 +1340,7 @@ def processReactomePathwaysData():
                 # Download the information for the top pathways
                 stderr.write("\nDownloading secondary pathways file " + str(pathway_entry["stId"]))
                 pathway_details_url = COMMON_RESOURCES['reactome'].get("details_url").format(pathway_entry["stId"])
-                pathway_details_filename = DATA_DIR + str(pathway_entry["stId"]) + "_secondary_pathways.cache"
+                pathway_details_filename = REACTOME_DIR + str(pathway_entry["stId"]) + "_secondary_pathways.cache"
 
                 downloadFile(pathway_details_url, "", pathway_details_filename,
                              SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, True)
@@ -1352,7 +1355,7 @@ def processReactomePathwaysData():
                     for sec_pathway in top_pathway.get("hasEvent"):
                         secondary_pathway_id = sec_pathway["stId"]
                         secondary_pathway_details_url = COMMON_RESOURCES['reactome'].get("details_url").format(secondary_pathway_id)
-                        secondary_pathway_details_filename = DATA_DIR + str(secondary_pathway_id) + "_pathway.cache"
+                        secondary_pathway_details_filename = REACTOME_DIR + str(secondary_pathway_id) + "_pathway.cache"
 
                         stderr.write("\nEvent Downloading event file pathways file " + str(secondary_pathway_id))
                         downloadFile(secondary_pathway_details_url, "", secondary_pathway_details_filename,

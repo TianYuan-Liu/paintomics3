@@ -1152,6 +1152,12 @@ i.relevantFeature:before {
 	margin: 10px 0;
 }
 
+.boxTitleLabel {
+	font-weight: bold;
+	padding-top: 5px;
+	border-bottom: 1px solid #3892d3;
+}
+
 /*PATHWAYS THUMBNAILS FOR HISTORY PANEL*/
 
 .step4HistoryBox {

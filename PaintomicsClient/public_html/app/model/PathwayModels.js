@@ -333,6 +333,7 @@ function FeatureGraphicalData(type) {
     this.y = 0;
     this.width = 0;
     this.height = 0;
+    this.title = null;
     this.visible = true;
 
     /*****************************
@@ -340,36 +341,56 @@ function FeatureGraphicalData(type) {
      *****************************/
     this.setID = function (id) {
         this.id = id;
+
+        return this;
     };
     this.getID = function () {
         return this.id;
     };
     this.setX = function (x) {
         this.x = x;
+
+        return this;
     };
     this.getX = function () {
         return this.x;
     };
     this.setY = function (y) {
         this.y = y;
+
+        return this;
     };
     this.getY = function () {
         return this.y;
     };
     this.setBoxWidth = function (width) {
         this.width = width;
+
+        return this;
     };
     this.getBoxWidth = function () {
         return this.width;
     };
     this.setBoxHeight = function (height) {
         this.height = height;
+
+        return this;
     };
     this.getBoxHeight = function () {
         return this.height;
     };
+    this.setBoxTitle = function (title) {
+        this.title = title;
+
+        return this;
+    };
+    this.getBoxTitle = function () {
+        return this.title;
+    };
     this.setVisible = function (visible) {
         this.visible = visible;
+
+        return this;
     };
     this.isVisible = function () {
         return this.visible;
@@ -394,6 +415,9 @@ function FeatureGraphicalData(type) {
         }
         if (jsonObject.height !== undefined) {
             this.height = parseFloat(jsonObject.height);
+        }
+        if (jsonObject.title !== undefined) {
+            this.title = jsonObject.title;
         }
         if (jsonObject.visible !== undefined) {
             this.visible = jsonObject.visible;

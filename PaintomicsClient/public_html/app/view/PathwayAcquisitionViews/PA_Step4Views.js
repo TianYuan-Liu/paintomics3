@@ -216,7 +216,10 @@ function PA_Step4JobView() {
 			this.currentView.hideTooltips();
 		}
 		
-		this.controller.showJobInstance(this.getModel(), {doUpdate: false, callback: function() {initializeTooltips(".helpTip");}});
+		this.controller.showJobInstance(this.getModel(), {doUpdate: false, callback: function() {
+			initializeTooltips(".helpTip");
+			$('#pathwayEnrichmentSection').get(0).scrollIntoView();
+		}});
 		return this;
 	};
 
@@ -783,7 +786,7 @@ function PA_Step4KeggDiagramView() {
 		var featureSets = Object.values(xyTable);
 		var view = null;
 		for (var i in featureSets) {
-			view = new PA_Step4KeggDiagramFeatureSetView().loadModel(featureSets[i], this.getModel().getID()).setParent(this.getParent());
+			view = new PA_Step4KeggDiagramFeatureSetView().setParent(this.getParent()).loadModel(featureSets[i], this.getModel().getID());
 			featureSets[i].addObserver(view);
 			this.items.push(view);
 		}
@@ -1078,6 +1081,15 @@ function PA_Step4KeggDiagramFeatureSetView() {
 	this.featureView = null;
 	this.adjustFactor = 1;
 	this.tooltipComponent = null;
+	this.metageneMode = false;
+
+	this.isMetageneMode = function() {
+		return this.metageneMode;
+	};
+
+	this.switchMetageneMode = function(metageneMode) {
+		this.metageneMode = metageneMode;
+	};
 
 	/***********************************************************************
 	* GETTERS AND SETTERS
@@ -1087,16 +1099,43 @@ function PA_Step4KeggDiagramFeatureSetView() {
 		this.model = featureSet;
 		var pos = 0;
 		var features = this.model.getFeatures();
+		var geneOmicNames = this.getParent("PA_Step4JobView").getModel().getGeneOmicNames();
+		var omicNames = this.getParent("PA_Step4JobView").getModel().getOmicNames();
 
-		for(var i in features){
-			if(features[i].getFeature().isRelevant()){
-				pos = i;
-				break;
+		// Use of metagenes
+		// If the number of features associated to the box exceeds 5,
+		// we calculate the metagenes and show them instead.
+		if (features.length > 5) {
+			omicNames.forEach(function(omic) {
+				// Use all values of the same omic in all features associated to the box.
+				var omicValues = this.model.getAllOmicValues(omic).map(x => x.getValues());
+
+				// It is important that the featureType contains gene or compound word, as it 
+				// will be used later to filter.
+				var featureType = "metagene"; //geneOmicNames.includes(omic) ? "gene" : "compound";
+
+				this.model.addOmicMetagenes(omic, featureType, mlPCA.generateMetagenes(omicValues));
+			}.bind(this));
+
+			this.switchMetageneMode(true);
+
+			this.model.setMainFeature(this.model.getMetagenes()[0]);
+
+			this.featureView = new PA_Step4KeggDiagramFeatureSetSVGBox().setParent(this).loadModel(this.model.getMainFeature()).setComponentID(pathwayID + "_" + this.model.getX() + "_" + this.model.getY()).setIsUnique(false);
+
+		} else {
+
+			for(var i in features){
+				if(features[i].getFeature().isRelevant()){
+					pos = i;
+					break;
+				}
 			}
-		}
-		this.model.setMainFeature(features[pos]);
+			this.model.setMainFeature(features[pos]);
 
-		this.featureView = new PA_Step4KeggDiagramFeatureSetSVGBox().setParent(this).loadModel(this.model.getMainFeature()).setComponentID(pathwayID + "_" + this.model.getX() + "_" + this.model.getY()).setIsUnique((this.model.getFeatures().length === 1));
+			this.featureView = new PA_Step4KeggDiagramFeatureSetSVGBox().setParent(this).loadModel(this.model.getMainFeature()).setComponentID(pathwayID + "_" + this.model.getX() + "_" + this.model.getY()).setIsUnique((features.length === 1));
+		}
+
 		return this;
 	};
 
@@ -1203,7 +1242,6 @@ function PA_Step4KeggDiagramFeatureSetTooltip() {
 	* the feature information
 	* This view is a tooltip for a PA_Step4KeggDiagramFeatureSetView item, e.g. a box in the
 	* pathway SVG, so it will turn visible when the situate the mouse over the parent item.
-	* @implements Singleton
 	*/
 
 	/*********************************************************************
@@ -1238,7 +1276,10 @@ function PA_Step4KeggDiagramFeatureSetTooltip() {
 	this.hide = function(force) {
 		if (! this.isPinned || force) {
 			this.forceHide = force;
-			this.getComponent().close();		
+			this.getComponent().close();	
+			
+			// Remove the observer so it can be GC
+			this.getModel().deleteObserver(this);
 		}
 	};
 	
@@ -1272,10 +1313,29 @@ function PA_Step4KeggDiagramFeatureSetTooltip() {
 	* @param  {Integer} sense indicates the direction to change (+1 next, -1 prev.)
 	* @return {PA_Step4KeggDiagramFeatureSetTooltip} the view
 	*/
-	this.changeVisibleFeature = function(sense){
-		var currentFeaturePos = this.getModel().features.indexOf(this.getModel().getMainFeature());
-		currentFeaturePos = ((currentFeaturePos + sense) + this.getModel().features.length) % this.getModel().features.length;
-		this.getModel().setMainFeature(this.getModel().features[currentFeaturePos]);
+	this.changeVisibleFeature = function(sense, changeMode=false){
+		var metageneMode = this.getParent().isMetageneMode();
+		var currentFeaturePos = 0;
+		var newFeature;
+
+		if (metageneMode) {
+			if (! changeMode) {
+				currentFeaturePos = this.getModel().metagenes.indexOf(this.getModel().getMainFeature());
+				currentFeaturePos = ((currentFeaturePos + sense) + this.getModel().metagenes.length) % this.getModel().metagenes.length;
+			}
+
+			newFeature = this.getModel().metagenes[currentFeaturePos];
+		} else {
+			if (! changeMode) {
+				currentFeaturePos = this.getModel().features.indexOf(this.getModel().getMainFeature());
+				currentFeaturePos = ((currentFeaturePos + sense) + this.getModel().features.length) % this.getModel().features.length;
+			}
+
+			newFeature = this.getModel().features[currentFeaturePos];
+		}
+
+
+		this.getModel().setMainFeature(newFeature);
 		this.getModel().setChanged();
 		this.getModel().notifyObservers();
 		return this;
@@ -1296,15 +1356,21 @@ function PA_Step4KeggDiagramFeatureSetTooltip() {
 		/* STEP 1. INITIALIZE VARIABLES                         */
 		/********************************************************/
 		var mainFeatureSetItem = this.getModel().getMainFeature();
+		var mainFeatureGraphicalData = mainFeatureSetItem.getFeatureGraphicalData();
 		var featureType = mainFeatureSetItem.getFeature().getFeatureType();
+		var boxTitle = mainFeatureGraphicalData.getBoxTitle();
+		var geneName = mainFeatureSetItem.getFeature().getName().split(",")[0];
+		var metagenes = this.getModel().getMetagenes();
+		var metageneMode = this.getParent().isMetageneMode();
 		var message = "";
 
 		/********************************************************/
 		/* STEP 2. CHECK IF THERE ARE OTHER FEATURES AT THE     */
 		/*         SAME POSITION                                */
 		/********************************************************/
-		var nOtherItems = this.model.getFeatures().length-1;
+		var nOtherItems = metageneMode ? metagenes.length-1 : this.model.getFeatures().length-1;
 		var domEl = this.getComponent();
+		var showBoxTitle = false;
 		
 		if (! domEl.rendered) {
 			domEl.doLayout();
@@ -1319,6 +1385,41 @@ function PA_Step4KeggDiagramFeatureSetTooltip() {
 			} else {
 				$(domEl).find(".otherFeaturesLabel").hide();
 			}
+			
+			// Customize title with feature name
+			if (boxTitle != undefined) {
+				var htmlTitle = "Feature: " + geneName;
+
+				if (mainFeatureSetItem.getFeature().isRelevant()) {
+					htmlTitle += "<i class='featureNameLabelRelevant relevantFeature'></i>";
+				}
+
+				$(domEl).find(".boxTitleLabel span").html(htmlTitle).show();
+
+				showBoxTitle = true;
+			}
+
+			var buttonWrapper = $(domEl).find(".twoOptionsButtonWrapper");
+
+			// Enable two buttons if there are metagenes present
+			if (metagenes !== null && metagenes.length) {			
+				// In the first run no element will be selected. Choose one based on the presence of metagenes.
+				if (! buttonWrapper.has("a.selected")) {
+					var selectedButton = metageneMode ? 'metagenes' : 'genes';
+
+					buttonWrapper.find("a[name=" + selectedButton + "]").addClass("selected");
+				} else {
+					metageneMode = this.metageneMode = (buttonWrapper.find("a[name=" + selectedButton + "]").attr("name") == "metagenes");
+				}
+
+				buttonWrapper.show();
+
+				showBoxTitle = true;
+			} else {
+				buttonWrapper.hide();
+			}
+			
+			$(domEl).find(".boxTitleLabel").toggle(showBoxTitle);
 		}
 		/********************************************************/
 		/* STEP 3. UPDATE SUBCOMPONENTS                         */
@@ -1328,9 +1429,10 @@ function PA_Step4KeggDiagramFeatureSetTooltip() {
 		this.getComponent().updateLayout();
 		
 		// Set title
-		var htmlTitle = "<span class='featureNameLabel'>" + mainFeatureSetItem.getFeature().getName().split(",")[0] + "</span>";
+		var featureTitle = boxTitle != undefined ? boxTitle : geneName;
+		var htmlTitle = "<span class='featureNameLabel'>" + featureTitle + "</span>";
 		
-		if (mainFeatureSetItem.getFeature().isRelevant()) {
+		if (boxTitle == undefined && mainFeatureSetItem.getFeature().isRelevant()) {
 			htmlTitle += "<i class='featureNameLabelRelevant relevantFeature'></i>";
 		}
 		
@@ -1355,7 +1457,7 @@ function PA_Step4KeggDiagramFeatureSetTooltip() {
 			layout: "auto",
 			style: "background: #fff; border: solid 2px #B7C7CF; border-radius : 2px; margin:0; padding:0;",
 			resizable: false, bodyPadding:0,
-			autoHeight: true, width: 260, minHeight:240,
+			autoHeight: true, width: 280, minHeight:240,
 			closable: false,
 			tools: [
 				{
@@ -1382,6 +1484,16 @@ function PA_Step4KeggDiagramFeatureSetTooltip() {
 				}
 			],
 			items: [
+				{
+					xtype: "box", html:
+					'<div class="boxTitleLabel" style="text-align: center; display: none;">' +
+					'  <span>Event title</span>' +
+					'  <div class="twoOptionsButtonWrapper">' +
+					'      <a href="javascript:void(0)" class="button twoOptionsButton" name="genes">Genes</a>' +
+					'      <a href="javascript:void(0)" class="button twoOptionsButton" name="metagenes">Metagenes</a>' +
+					'  </div>' +
+					'</div>'					
+				},
 				{
 					xtype: "box", html:
 					'<div class="otherFeaturesLabel" style="text-align: center; display: block;">' +
@@ -1422,6 +1534,23 @@ function PA_Step4KeggDiagramFeatureSetTooltip() {
 					});
 					$(domEl).find(".step4TooltipNextButton").click(function() {
 						me.changeVisibleFeature(1);
+					});
+					
+					if (me.getParent().isMetageneMode()) {
+						$(domEl).find("a.twoOptionsButton[name=metagenes]").addClass("selected");
+					} else {
+						$(domEl).find("a.twoOptionsButton[name!=metagenes]").addClass("selected");
+					}
+					
+					$(domEl).find(".boxTitleLabel a.twoOptionsButton").click( function(){
+						var parent = $(this).parent(".twoOptionsButtonWrapper");
+	
+						$(parent).find("a.twoOptionsButton.selected").removeClass("selected");
+						$(this).addClass("selected");
+
+						// Enable or disable metagene mode
+						me.getParent().switchMetageneMode($(this).attr('name') == 'metagenes');
+						me.changeVisibleFeature(0, true);
 					});
 				},
 				beforehide: function() {
@@ -1544,7 +1673,7 @@ function PA_Step4KeggDiagramFeatureView(showButtons) {
 		/*UPDATE THE HEATMAP AND THE PLOT*/
 		var visibleOmics =[];
 		var allOmics = null;
-		if(featureType.toLowerCase() === "gene"){
+		if(featureType.toLowerCase().replace("meta", "") === "gene"){
 			allOmics = this.getParent("PA_Step4PathwayView").getGeneBasedInputOmics();
 		}else{
 			allOmics = this.getParent("PA_Step4PathwayView").getCompoundBasedInputOmics();
@@ -1561,10 +1690,10 @@ function PA_Step4KeggDiagramFeatureView(showButtons) {
 			'      <a href="javascript:void(0)" class="button twoOptionsButton" name="line-chart">Line chart</a>'+
 			"  </div>" +
 			"  <div class='step4-tooltip-plot-container selected' name='heatmap-chart'>" +
-			"    <div id='" + this.getComponent().getId() + "_heatmapcontainer' name='heatmap-chart' style='height:"+ divHeight+ "px;width: 255px;overflow:hidden;overflow-y:auto;padding-right: 15px;'></div>" +
+			"    <div id='" + this.getComponent().getId() + "_heatmapcontainer' name='heatmap-chart' style='height:"+ divHeight+ "px;width: 275px;overflow:hidden;overflow-y:auto;padding-right: 15px;'></div>" +
 			"  </div>" +
 			"  <div class='step4-tooltip-plot-container' name='line-chart' style='display:none;'>" +
-			"    <div id='" + this.getComponent().getId() + "_plotcontainer' style='height:"+ divHeight+ "px;width: 230px;'></div>" +
+			"    <div id='" + this.getComponent().getId() + "_plotcontainer' style='height:"+ divHeight+ "px;width: 275px;'></div>" +
 			"  </div>"
 		);
 
@@ -2041,7 +2170,7 @@ function PA_Step4KeggDiagramFeatureSetSVGBox() {
 	};
 	//TODO: DOCUMENTAR
 	this.setComponentID = function(componentID) {
-		this.componentID = componentID + "_" + this.model.getFeature().getID();
+		this.componentID = (componentID + "_" + this.model.getFeature().getID()).replace(/\s+/g, '_');
 		return this;
 	};
 	this.setIsUnique= function(isUnique) {
@@ -2112,11 +2241,12 @@ function PA_Step4KeggDiagramFeatureSetSVGBox() {
 
 		var feature = this.getModel().getFeature();
 		var featureGraphicalData = this.getModel().getFeatureGraphicalData();
+		var boxTitle = featureGraphicalData.getBoxTitle() != undefined ? featureGraphicalData.getBoxTitle() : feature.getName();
 		var isRelevant = feature.isRelevant();
 
 		/*FILTER THE LIST OF OMICS TO GET ONLY THE "GENE" BASED OMICS OR THE COMPOUND BASED OMICS*/
 		var visibleOmics = visualOptions.visibleOmics.filter(function(elem) {
-			return elem.indexOf(feature.getFeatureType().toLowerCase() + "based") > -1;
+			return elem.indexOf(feature.getFeatureType().toLowerCase().replace("meta", "") + "based") > -1;
 		});
 
 		//   if (isRelevant === true) {
@@ -2175,7 +2305,7 @@ function PA_Step4KeggDiagramFeatureSetSVGBox() {
 		}
 		//ADD THE BOX WITH THE TEXT
 		var fontSize = 13;
-		if (feature.getName().length > 6) {
+		if (boxTitle.length > 6) {
 			fontSize = 10;
 		}
 
@@ -2198,7 +2328,7 @@ function PA_Step4KeggDiagramFeatureSetSVGBox() {
 			context.font = "normal " + (fontSize * scaleFactor) + "px serif";
 			context.fillStyle = 'black';
 			// TODO: remove added space?
-			context.fillText(' ' + feature.getName(), 0, fontSize * scaleFactor);
+			context.fillText(' ' + boxTitle, 0, fontSize * scaleFactor);
 		}
 
 		//Add start glyph if relevant
@@ -3437,26 +3567,27 @@ function PA_Step4DetailsView() {
 
 	this.updateObserver = function () {
 		var featureSetElems = this.getModel().getFeatures();
+		var metagenesSetElems = this.getModel().getMetagenes();
 		var featureType = featureSetElems[0].getFeature().getFeatureType();
-		var entriesTable = {};
+		var entriesTable = {}, entriesTableMetagenes = {};
 
 		/**
 		* This function fills recursively a table ordering by omicType
 		*/
-		var addTableEntrie = function (omicValue, featureName, entrieName) {
+		var addTableEntrie = function (entriesValue, omicValue, featureName, entrieName) {
 			if (omicValue.isCompoundOmicsValue()) {
 				var omicValues = omicValue.getValues();
 				for (var i in omicValues) {
-					addTableEntrie(omicValues[i], featureName, entrieName + omicValue.getName() + "#");
+					addTableEntrie(entriesValue, omicValues[i], featureName, entrieName + omicValue.getName() + "#");
 				}
 			} else if (omicValue.isVisibleAtFeatureFamilyDetails()) {
 				if (entrieName === "") {
 					entrieName = omicValue.getOmicName();
 				}
-				if (entriesTable[entrieName] == null) {
-					entriesTable[entrieName] = [];
+				if (entriesValue[entrieName] == null) {
+					entriesValue[entrieName] = [];
 				}
-				entriesTable[entrieName].push({
+				entriesValue[entrieName].push({
 					keggName: featureName + ((entrieName === omicValue.getOmicName()) ? "" : " " + omicValue.getOmicName()),
 					inputName: omicValue.inputName,
 					originalName: omicValue.originalName,
@@ -3471,7 +3602,15 @@ function PA_Step4DetailsView() {
 			featureName = featureSetElems[i].getFeature().getName();
 			omicValues = featureSetElems[i].getFeature().getOmicsValues();
 			for (var j in omicValues) {
-				addTableEntrie(omicValues[j], featureName, "");
+				addTableEntrie(entriesTable, omicValues[j], featureName, "");
+			}
+		}
+
+		for (var i in metagenesSetElems) {
+			featureName = metagenesSetElems[i].getFeature().getName();
+			omicValues = metagenesSetElems[i].getFeature().getOmicsValues();
+			for (var j in omicValues) {
+				addTableEntrie(entriesTableMetagenes, omicValues[j], featureName, "");
 			}
 		}
 
@@ -3481,7 +3620,7 @@ function PA_Step4DetailsView() {
 
 		var divWidth = elem.width() - 400;
 
-		var heatmap, plot, divId, htmlCode;
+		var heatmap, plot, heatmap_metagenes, plot_metagenes, divId, htmlCode;
 		for (var i in omicNames) {
 			divId = omicNames[i].replace(" ", "_");
 			htmlCode =
@@ -3490,11 +3629,25 @@ function PA_Step4DetailsView() {
 			"  <div class='PA_step5_heatmapContainer' id='" + divId + "_heatmapContainer'  style='height: " + ((entriesTable[omicNames[i]].length * 30) + 100) + "px'><i class='fa fa-cog fa-spin'></i> Loading..</div>" +
 			"  <div class='PA_step5_plotContainer' id='" + divId + "_plotContainer'  style='width:" + divWidth + "px;height: " + ((entriesTable[omicNames[i]].length * 30) + 100) + "px'><i class='fa fa-cog fa-spin'></i> Loading..</div>" +
 			"</div>";
+
+			if (metagenesSetElems !== null && metagenesSetElems.length) {
+				htmlCode += 
+				"<div class='contentbox' id='" + divId + "_metagenes_box' style='" + (metagenesSetElems !== null ? '' : 'display: none;') + "'>" +
+				"  <h3>" + omicNames[i].replace("#", " ") + " (metagenes) </h3>" +
+				"  <div class='PA_step5_heatmapContainer' id='" + divId + "_heatmapContainer_metagenes'  style='height: " + ((entriesTableMetagenes[omicNames[i]].length * 30) + 100) + "px'><i class='fa fa-cog fa-spin'></i> Loading..</div>" +
+				"  <div class='PA_step5_plotContainer' id='" + divId + "_plotContainer_metagenes'  style='width:" + divWidth + "px;height: " + ((entriesTableMetagenes[omicNames[i]].length * 30) + 100) + "px'><i class='fa fa-cog fa-spin'></i> Loading..</div>" +
+				"</div>";
+			}
 			elem.append(htmlCode);
 
 			//CREATE THE HEATMAP CONTAINER AND THE HEATMAP CHART
 			heatmap = this.generateHeatmap(divId + "_heatmapContainer", omicNames[i].split("#")[0], entriesTable[omicNames[i]], this.getParent("PA_Step4PathwayView").getDataDistributionSummaries(), this.getParent("PA_Step4PathwayView").getVisualOptions());
 			plot = this.generatePlot(divId + "_plotContainer", omicNames[i].split("#")[0], entriesTable[omicNames[i]], this.getParent("PA_Step4PathwayView").getDataDistributionSummaries(), divId + "_plotlegendContainer", this.getParent("PA_Step4PathwayView").getVisualOptions());
+
+			if (metagenesSetElems !== null && metagenesSetElems.length) {
+				heatmap_metagenes = this.generateHeatmap(divId + "_heatmapContainer_metagenes", omicNames[i].split("#")[0], entriesTableMetagenes[omicNames[i]], this.getParent("PA_Step4PathwayView").getDataDistributionSummaries(), this.getParent("PA_Step4PathwayView").getVisualOptions());
+				plot_metagenes = this.generatePlot(divId + "_plotContainer_metagenes", omicNames[i].split("#")[0], entriesTableMetagenes[omicNames[i]], this.getParent("PA_Step4PathwayView").getDataDistributionSummaries(), divId + "_plotlegendContainer", this.getParent("PA_Step4PathwayView").getVisualOptions());
+			}
 		}
 
 		$(".featureSetOptionsToolbar").next("h2").html(featureType + " family overview");
@@ -3522,7 +3675,7 @@ function PA_Step4DetailsView() {
 			featureValues = omicsValues[i].values;
 			shownameValue = omicsValues[i].inputName != omicsValues[i].originalName && omicsValues[i].originalName !== undefined ?
 				omicsValues[i].originalName + ": " + omicsValues[i].inputName :
-				omicsValues[i].inputName
+				omicsValues[i].inputName;
 
 			serie = {name: (omicsValues[i].isRelevant === true ? "* " : "") + omicsValues[i].keggName + "#" + shownameValue, data: []};
 			//Add the name for the row (e.g. MagoHb or "miRNA my_mirnaid_1")

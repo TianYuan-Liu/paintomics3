@@ -44,41 +44,60 @@ function Feature(name) {
 
 	this.selected = false;
 
+	this.isMetagene = false;
+
 	/*****************************
 	** GETTERS AND SETTERS
 	*****************************/
 	this.setID = function(ID) {
 		this.ID = ID;
+
+		return this;
 	};
 	this.getID = function() {
 		return this.ID;
 	};
 	this.setName = function(name) {
 		this.name = name;
+
+		return this;
 	};
 	this.getName = function() {
 		return this.name;
 	};
 	this.setUrl = function(url) {
 		this.url = url;
+
+		return this;
 	};
 	this.getUrl = function() {
 		return this.url;
 	};
 	this.setSignificative = function(significative) {
 		this.significative = significative;
+
+		return this;
 	};
 	this.isSignificative = function() {
 		return this.significative;
 	};
 	this.setFeatureType = function(featureType) {
 		this.featureType = featureType;
+
+		return this;
 	};
 	this.getFeatureType = function() {
 		return this.featureType;
 	};
+	this.addOmicsValues = function(omicsValues) {
+		this.omicsValues.push(omicsValues);
+
+		return this;
+	};
 	this.setOmicsValues = function(omicsValues) {
 		this.omicsValues = omicsValues;
+
+		return this;
 	};
 	this.getOmicsValues = function() {
 		return this.omicsValues;
@@ -90,6 +109,8 @@ function Feature(name) {
 	};
 	this.setSelected = function(selected) {
 		this.selected = selected;
+
+		return this;
 	};
 	this.isSelected = function() {
 		return this.selected;
@@ -101,6 +122,14 @@ function Feature(name) {
 			}
 		}
 		return false;
+	};
+	this.setMetagene = function(isMetagene) {
+		this.isMetagene = isMetagene;
+
+		return this;
+	};
+	this.isMetagene = function() {
+		return this.isMetagene;
 	};
 	/********************************************
 	** OTHER FUNCTIONS
@@ -226,6 +255,8 @@ function FeatureSet(x, y) {
 	this.relevantFeatures = null;
 
 	this.features = null;
+	
+	this.metagenes = null;
 
 	/*****************************
 	** GETTERS AND SETTERS
@@ -298,6 +329,47 @@ function FeatureSet(x, y) {
 		}
 		this.features.push(feature);
 	};
+	this.getMetagenes = function() {
+		return this.metagenes;
+	};
+	this.setMetagenes = function(metagenes) {
+		this.metagenes = metagenes;
+	};
+	this.addOmicMetagenes = function(omic, featureType, metagenes) {
+		if (this.metagenes === null) {
+			this.metagenes = [];
+		}
+
+		// All metagenes will share the same graphical data
+		var oldFeatureGraphicalData = this.getFeatures()[0].getFeatureGraphicalData();
+		var featureGraphicalData = jQuery.extend({}, oldFeatureGraphicalData).setID("Metagene_" + oldFeatureGraphicalData.getID());
+
+		for (var i = 0; i < metagenes.length; i++) {
+
+			if (this.metagenes.length < i + 1) {
+				var metageneID = "Metagene " + (i + 1);
+				var metageneFeature = new Feature(metageneID).setID(metageneID).setMetagene(true).setFeatureType(featureType);
+
+				this.metagenes[i] = new FeatureSetElem(metageneFeature, featureGraphicalData).setParent(this);
+			}
+
+			// TODO: add support for compound type in simple omic value
+			this.metagenes[i].getFeature().addOmicsValues(new SimpleOmicValue().setValues(metagenes[i]).setMetagene(true).setOmicName(omic));
+		}
+	};
+	this.getAllOmicValues = function(omic) {
+		var results = [];
+
+		this.getFeatures().forEach(function(feature) {
+			var omicValues = feature.getFeature().getOmicValues(omic, true);
+
+			if (omicValues != undefined) {
+				results.push(...omicValues);
+			}
+		});
+
+		return(results);
+	};
 }
 FeatureSet.prototype = new Model;
 
@@ -310,18 +382,24 @@ function FeatureSetElem(feature, featureGraphicalData) {
 	*****************************/
 	this.setFeature = function(feature) {
 		this.feature = feature;
+
+		return this;
 	};
 	this.getFeature = function() {
 		return this.feature;
 	};
 	this.setFeatureGraphicalData = function() {
 		this.featureGraphicalData = featureGraphicalData;
+
+		return this;
 	};
 	this.getFeatureGraphicalData = function() {
 		return this.featureGraphicalData;
 	};
 	this.setParent= function(parent) {
 		this.parent = parent;
+
+		return this;
 	};
 	this.getParent= function() {
 		return this.parent;
@@ -341,36 +419,53 @@ function OmicValue() {
 	this.omicName = "";
 	this.relevant = "";
 	this.values = null;
+	this.isMetagene = false;
 
 	/***********************************************************************
 	* GETTERS AND SETTERS
 	***********************************************************************/
 	this.setInputName = function(inputName) {
 		this.inputName = inputName;
+
+		return this;
 	};
 	this.getInputName = function() {
 		return this.inputName;
 	};
 	this.setRelevant = function(relevant) {
 		this.relevant = relevant;
+
+		return this;
 	};
 	this.isRelevant = function() {
 		return this.relevant;
 	};
 	this.setOmicName = function(omicName) {
 		this.omicName = omicName;
+
+		return this;
 	};
 	this.getOmicName = function() {
 		return this.omicName;
 	};
 	this.setValues = function(values) {
 		this.values = values;
+
+		return this;
 	};
 	this.getValues = function() {
 		return this.values;
 	};
 	this.isCompoundOmicsValue = function() {
 		throw Error("Not implemented");
+	};
+	this.setMetagene = function(isMetagene) {
+		this.isMetagene = isMetagene;
+
+		return this;
+	};
+	this.isMetagene = function() {
+		return this.isMetagene;
 	};
 }
 OmicValue.prototype = new Model;

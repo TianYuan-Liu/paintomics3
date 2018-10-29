@@ -13,5 +13,7 @@ PaintomicsServer/src/examplefiles/GTF/*.gtf
 PaintomicsServer/src/examplefiles.bak*
 *.orig
 .tags*
+.vscode
 PaintomicsServer/src/data*
 PaintomicsClient/public_html/index_cipf.html
+*.code-workspace
