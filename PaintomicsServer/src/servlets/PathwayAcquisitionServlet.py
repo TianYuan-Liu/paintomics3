@@ -21,7 +21,7 @@ import logging
 import logging.config
 
 import cairo
-import rsvg
+import cairosvg
 from time import time
 
 from collections import defaultdict
@@ -592,14 +592,7 @@ def pathwayAcquisitionSaveImage(request, response):
 
         if(fileFormat == "png"):
             def createImage(svgData):
-                svg = rsvg.Handle(data=svgData)
-                width = svg.props.width
-                height = svg.props.height
-                surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
-                context = cairo.Context(surface)
-                open(path + fileName + "." + fileFormat, 'a').close()
-                svg.render_cairo(context)
-                surface.write_to_png(path + fileName + "." + fileFormat)
+                cairosvg.svg2png(bytestring=svgData, write_to=path + fileName + "." + fileFormat)
             try:
                 logging.info("TRYING...")
                 createImage(svgData=svgData)
