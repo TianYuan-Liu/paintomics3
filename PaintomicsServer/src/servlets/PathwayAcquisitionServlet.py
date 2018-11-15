@@ -586,9 +586,10 @@ def pathwayAcquisitionSaveImage(request, response):
         fileName = "paintomics_" + request.form.get("fileName").replace(" ", "_") + "_" + jobID
         fileFormat = request.form.get("format")
 
-        userID = jobInstance.getUserID()
-        userDirID = userID if userID is not None else "nologin"
-        path = CLIENT_TMP_DIR + userDirID + jobInstance.getOutputDir().replace(CLIENT_TMP_DIR + userDirID, "")
+        # userID = jobInstance.getUserID()
+        # userDirID = userID if userID is not None else "nologin"
+        # path = CLIENT_TMP_DIR + userDirID + jobInstance.getOutputDir().replace(CLIENT_TMP_DIR + userDirID, "")
+        path = jobInstance.getOutputDir()
 
         if(fileFormat == "png"):
             def createImage(svgData):
