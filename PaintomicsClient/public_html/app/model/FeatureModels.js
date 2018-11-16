@@ -123,6 +123,14 @@ function Feature(name) {
 		}
 		return false;
 	};
+	this.isRelevantAssociation = function() {
+		for (var i in this.omicsValues) {
+			if (this.omicsValues[i].isRelevantAssociation() === true) {
+				return true;
+			}
+		}
+		return false;
+	};
 	this.setMetagene = function(isMetagene) {
 		this.isMetagene = isMetagene;
 
@@ -418,6 +426,7 @@ function OmicValue() {
 	this.inputName = "";
 	this.omicName = "";
 	this.relevant = "";
+	this.relevantAssociation = false;
 	this.values = null;
 	this.isMetagene = false;
 
@@ -439,6 +448,14 @@ function OmicValue() {
 	};
 	this.isRelevant = function() {
 		return this.relevant;
+	};
+	this.setRelevantAssociation = function(relevant) {
+		this.relevantAssociation = relevant;
+
+		return this;
+	};
+	this.isRelevantAssociation = function() {
+		return this.relevantAssociation;
 	};
 	this.setOmicName = function(omicName) {
 		this.omicName = omicName;

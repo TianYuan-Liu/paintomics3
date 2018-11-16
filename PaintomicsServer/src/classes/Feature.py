@@ -115,6 +115,7 @@ class OmicValue(Model):
         self.originalName = inputName
         self.omicName  = ""
         self.relevant  = ""
+        self.relevantAssociation = False
         self.values    = None
 
     #******************************************************************************************************************
@@ -135,6 +136,11 @@ class OmicValue(Model):
     def isRelevant(self):
         return self.relevant
 
+    def setRelevantAssociation(self, relevant):
+        self.relevantAssociation = relevant
+    def isRelevantAssociation(self):
+        return self.relevantAssociation
+
     def setOmicName(self, omicName):
         self.omicName = omicName
     def getOmicName(self):
@@ -150,7 +156,7 @@ class OmicValue(Model):
     #******************************************************************************************************************
     def parseBSON(self, bsonData):
         for (attr, value) in bsonData.items():
-            if(attr == "relevant"):
+            if(attr in ["relevant", "relevantAssociation"]):
                 value= (value == "True" or value == True)
             setattr(self, attr, value)
         return self

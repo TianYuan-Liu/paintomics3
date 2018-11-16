@@ -98,13 +98,13 @@ def pathwayAcquisitionStep1_PART1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID, EXA
             formFields   = REQUEST.form
             jobInstance.description=""
             jobInstance.setName(formFields.get("jobDescription", "")[:100])
-            specie = formFields.get("specie") #GET THE SPECIE NAME
+            specie = formFields.get("specie") #GET THE SPECIES NAME
             databases = REQUEST.form.getlist('databases[]')
             jobInstance.setOrganism(specie)
             # Check the available databases for species
             organismDB = set(dicDatabases.get(specie, [{}])[0].keys())
             jobInstance.setDatabases(list(set([u'KEGG']) | set(databases).intersection(organismDB)))
-            logging.info("STEP1 - SELECTED SPECIE IS " + specie)
+            logging.info("STEP1 - SELECTED SPECIES IS " + specie)
 
             logging.info("STEP1 - READING FILES....")
             JobInformationManager().saveFiles(uploadedFiles, formFields, userID, jobInstance, CLIENT_TMP_DIR)
@@ -117,8 +117,8 @@ def pathwayAcquisitionStep1_PART1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID, EXA
             logging.info("STEP1 - EXAMPLE MODE SELECTED")
             logging.info("STEP1 - COPYING FILES....")
 
-            exampleOmics = {"Gene expression": False, "Metabolomics": True, "Proteomics": True, "miRNA-seq": False, "DNase-seq": False}
-            for omicName, featureEnrichment in exampleOmics.iteritems():
+            exampleOmics = {"Gene expression": 'genes', "Metabolomics": 'features', "Proteomics": 'features', "miRNA-seq": 'genes', "DNase-seq": 'genes'}
+            for omicName, enrichment in exampleOmics.iteritems():
                 dataFileName = omicName.replace(" ", "_").replace("-seq", "").lower() + "_values.tab"
                 logging.info("STEP1 - USING ALREADY SUBMITTED FILE (data file) " + EXAMPLE_FILES_DIR + dataFileName + " FOR  " + omicName)
 
@@ -126,9 +126,9 @@ def pathwayAcquisitionStep1_PART1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID, EXA
                 logging.info("STEP1 - USING ALREADY SUBMITTED FILE (relevant features file) " + EXAMPLE_FILES_DIR + relevantFileName + " FOR  " + omicName)
 
                 if(["Metabolomics"].count(omicName)):
-                    jobInstance.addCompoundBasedInputOmic({"omicName": omicName, "inputDataFile": EXAMPLE_FILES_DIR + dataFileName, "relevantFeaturesFile": EXAMPLE_FILES_DIR + relevantFileName, "isExample" : True, "featureEnrichment": featureEnrichment})
+                    jobInstance.addCompoundBasedInputOmic({"omicName": omicName, "inputDataFile": EXAMPLE_FILES_DIR + dataFileName, "relevantFeaturesFile": EXAMPLE_FILES_DIR + relevantFileName, "isExample" : True, "enrichment": enrichment})
                 else:
-                    jobInstance.addGeneBasedInputOmic({"omicName": omicName, "inputDataFile": EXAMPLE_FILES_DIR + dataFileName, "relevantFeaturesFile": EXAMPLE_FILES_DIR + relevantFileName,  "isExample" : True, "featureEnrichment": featureEnrichment})
+                    jobInstance.addGeneBasedInputOmic({"omicName": omicName, "inputDataFile": EXAMPLE_FILES_DIR + dataFileName, "relevantFeaturesFile": EXAMPLE_FILES_DIR + relevantFileName,  "isExample" : True, "enrichment": enrichment})
 
             specie = "mmu"
             jobInstance.setOrganism(specie)

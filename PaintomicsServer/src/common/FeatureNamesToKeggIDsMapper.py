@@ -117,7 +117,7 @@ def findGeneSymbolByFeatureID(jobID, featureID, organism, db, databaseConvertion
     except Exception as ex:
         return None, False
 
-def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatures, notMatchedFeatures, foundFeatures, matchedGeneIDsTablesList, matchedGeneSymbolsTablesList, featureEnrichment):
+def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatures, notMatchedFeatures, foundFeatures, matchedGeneIDsTablesList, matchedGeneSymbolsTablesList, enrichment):
     """
     This function is used to query the database in different threads.
 
@@ -237,7 +237,7 @@ def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatur
     finally:
         client.close()
 
-def mapFeatureNamesToKeggIDs(jobID, organism, databases, featureList, featureEnrichment, mapGeneIDs=True):
+def mapFeatureNamesToKeggIDs(jobID, organism, databases, featureList, enrichment, mapGeneIDs=True):
     """
     This function match the provided list of features
     to KEGG accepted feature ID (e.g. entrez gene ID for mmu)
@@ -293,7 +293,7 @@ def mapFeatureNamesToKeggIDs(jobID, organism, databases, featureList, featureEnr
         threadsList = []
         i=0
         for genesListPart in genesListParts:
-            thread = Process(target=mapFeatureIdentifiers, args=(jobID, organism, databases, genesListPart, matchedFeatures, notMatchedFeatures, foundFeatures, matchedGeneIDsTablesList, matchedGeneSymbolsTablesList, featureEnrichment))
+            thread = Process(target=mapFeatureIdentifiers, args=(jobID, organism, databases, genesListPart, matchedFeatures, notMatchedFeatures, foundFeatures, matchedGeneIDsTablesList, matchedGeneSymbolsTablesList, enrichment))
             threadsList.append(thread)
             thread.start()
             i+=1

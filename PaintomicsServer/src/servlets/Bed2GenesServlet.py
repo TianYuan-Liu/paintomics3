@@ -133,8 +133,8 @@ def fromBEDtoGenes_STEP1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID, EXAMPLE_FILE
         logging.info("  - regionAreaPercentage :" + str(jobInstance.regionAreaPercentage))
         jobInstance.ignoreMissing = True if namePrefix + "_ignoremissing" in formFields.keys() else False
         logging.info("  - ignore missing       :" + str(jobInstance.ignoreMissing))
-        jobInstance.featureEnrichment = formFields.get(namePrefix + "_feature_enrichment_pre", False)
-        logging.info("  - Feature Enrichment   :" + str(jobInstance.featureEnrichment))
+        jobInstance.enrichment = formFields.get(namePrefix + "_enrichment_pre", 'genes')
+        logging.info("  - Enrichment   :" + str(jobInstance.enrichment))
 
         #rules
         jobInstance.geneIDtag= formFields.get(namePrefix + "_geneIDtag", "gene_id")
@@ -223,7 +223,7 @@ def fromBEDtoGenes_STEP2(jobInstance, userID, exampleMode, RESPONSE):
             "mainOutputFileName":  fileNames[1],
             "secondOutputFileName":  fileNames[2],
             "description": jobInstance.description,
-            "featureEnrichment": jobInstance.featureEnrichment
+            "enrichment": jobInstance.enrichment
         })
 
     except Exception as ex:

@@ -12,5 +12,7 @@
 	{"name" : "Relevant regions list", "type": "list"},
 	{"name" : "GTF file", "type": "data"},
 	{"name" : "Reference file", "type": "data"},
-	{"name" : "miRNA targets file", "type": "data"}
+	{"name" : "miRNA targets file", "type": "data"},
+	{"name" : "Full association file", "type": "list"},
+	{"name" : "Significant association file", "type": "list"}
 ]}

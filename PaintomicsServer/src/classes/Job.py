@@ -261,23 +261,37 @@ class Job(Model):
         omicName = inputOmic.get("omicName")
         valuesFileName= inputOmic.get("inputDataFile")
         relevantFileName= inputOmic.get("relevantFeaturesFile", "")
+        associationsFileName = inputOmic.get("associationsFile", "")
+        relevantAssociationsFileName = inputOmic.get("relevantAssociationsFile", "")
         allValues = []  #KEEP ALL VALUES TO CALCULATE PERCENTILES FOR EACH OMIC
 
         if(inputOmic.get("isExample", False) == False):
             valuesFileName = self.getInputDir() + valuesFileName
             relevantFileName = self.getInputDir() + relevantFileName
+            associationsFileName = self.getInputDir() + associationsFileName
+            relevantAssociationsFileName = self.getInputDir() + relevantAssociationsFileName
 
         totalInputFeatures  = set()
         totalMappedFeatures = foundFeatures = 0
-        featureEnrichment   = inputOmic.get("featureEnrichment", False)
+        enrichment   = inputOmic.get("enrichment", 'genes')
+        associationFeatures = None
+        relevantAssociationFeatures = {}
 
         #*************************************************************************
-        # STEP 1. PARSE THE RELEVANT FEATURES FILE FOR THE CURRENT OMIC (IF UPLOADED)
-        #         AND EXTRACT THE INFORMATION.
+        # STEP 1. PARSE THE RELEVANT FEATURES AND ASSOCIATIONS FILES FOR THE
+        #         CURRENT OMIC (IF UPLOADED) AND EXTRACT THE INFORMATION.
         #*************************************************************************
         logging.info("PARSING RELEVANT FEATURES FILE (" + omicName + ")..." )
         relevantFeatures = self.parseSignificativeFeaturesFile(relevantFileName)
         logging.info("PARSING RELEVANT FEATURES FILE (" + omicName + ")... DONE. " + str(len(relevantFeatures)) + " RELEVANT FEATURES PROCESSED.")
+
+        logging.info("PARSING ASSOCIATIONS FILE (" + omicName + ")...")
+        associationFeatures = self.parseAssociationsFile(associationsFileName)
+        logging.info("PARSING ASSOCIATIONS FILE (" + omicName + ")... DONE. " + str(len(associationFeatures.keys())) + " ASSOCIATIONS PROCESSED.")
+
+        logging.info("PARSING RELEVANT ASSOCIATIONS FILE (" + omicName + ")...")
+        relevantAssociationFeatures = self.parseSignificativeFeaturesFile(relevantAssociationsFileName)
+        logging.info("PARSING RELEVANT ASSOCIATIONS FILE (" + omicName + ")... DONE. " + str(len(associationFeatures.keys())) + " ASSOCIATIONS PROCESSED.")
 
         #*************************************************************************
         # STEP 2. PARSE THE FILE AND EXTRACT THE INFORMATION
@@ -307,33 +321,59 @@ class Job(Model):
                         # STEP 2.C.1 CREATE A NEW OMIC VALUE WITH ROW DATA
                         #*************************************************************************
 
-                        # Split the ID column as it might contain associated_gene:::original_name
-                        columnID = line[0].split(":::")
+                        # Auxiliary function to populate mutable outer values.
+                        def process_omic_value(geneName, omicValueVar):
+                            # *************************************************************************
+                            # CREATE A NEW TEMPORAL GENE INSTANCE
+                            # *************************************************************************
+                            geneAux = Gene("")
+                            geneAux.setName(geneName)
+                            geneAux.addOmicValue(omicValueVar)
 
-                        omicValueAux = OmicValue(columnID[0])
-                        omicValueAux.setOmicName(omicName)
-                        # omicValueAux.setRelevant(relevantFeatures.has_key(omicValueAux.getInputName().lower()))
-                        # TODO: Relevant flag using whole line including original name?
-                        omicValueAux.setRelevant(relevantFeatures.has_key(line[0].lower()))
-                        omicValueAux.setValues(map(float, line[1:len(line)]))
+                            # *************************************************************************
+                            # ADD THE TEMPORAL GENE INSTANCE TO THE LIST OF GENES
+                            # *************************************************************************
+                            parsedFeatures.append(geneAux)
 
-                        if len(columnID) > 1:
-                            omicValueAux.setOriginalName(columnID[1])
+                            allValues.extend(omicValueVar.getValues())
 
-                        #*************************************************************************
-                        # STEP 2.C.2 CREATE A NEW TEMPORAL GENE INSTANCE
-                        #*************************************************************************
-                        geneAux = Gene("")
-                        geneAux.setName(columnID[0])
-                        geneAux.addOmicValue(omicValueAux)
-                        #*************************************************************************
-                        # STEP 2.C.3 ADD THE TEMPORAL GENE INSTANCE TO THE LIST OF GENES
-                        #*************************************************************************
-                        parsedFeatures.append(geneAux)
+                            # TODO: add third enrichment method
+                            totalInputFeatures.add(omicValueVar.getOriginalName() if enrichment == 'features' else omicValueVar.getInputName())
 
-                        allValues += omicValueAux.getValues()
+                        # Make sure to use numerical values
+                        numericValues = map(float, line[1:len(line)])
 
-                        totalInputFeatures.add(omicValueAux.getOriginalName() if featureEnrichment else omicValueAux.getInputName())
+                        # If there exists an appropriate association list, use that to retrieve the gene
+                        # name as the previous process of matching regions or regulators to genes (rgmatch, etc)
+                        # shouldn't have been done, thus leaving the original unmapped features.
+                        #
+                        # Otherwise split the ID column as it might contain associated_gene:::original_name
+                        if associationFeatures:
+                            geneIDs = associationFeatures.get(line[0], [])
+
+                            for geneID in geneIDs:
+                                omicValueAux = OmicValue(geneID)
+                                omicValueAux.setOmicName(omicName)
+                                omicValueAux.setRelevant(relevantFeatures.has_key(line[0].lower()))
+                                omicValueAux.setRelevantAssociation(relevantAssociationFeatures.has_key(':::'.join([geneID, line[0]]).lower()))
+                                omicValueAux.setValues(numericValues)
+                                omicValueAux.setOriginalName(line[0])
+
+                                process_omic_value(geneID, omicValueAux)
+                        else:
+                            columnID = line[0].split(":::")
+
+                            omicValueAux = OmicValue(columnID[0])
+                            omicValueAux.setOmicName(omicName)
+                            # omicValueAux.setRelevant(relevantFeatures.has_key(omicValueAux.getInputName().lower()))
+                            # TODO: Relevant flag using whole line including original name?
+                            omicValueAux.setRelevant(relevantFeatures.has_key(line[0].lower()))
+                            omicValueAux.setValues(numericValues)
+
+                            if len(columnID) > 1:
+                                omicValueAux.setOriginalName(columnID[1])
+
+                            process_omic_value(columnID[0], omicValueAux)
 
                 totalInputFeatures = len(totalInputFeatures)
                 logging.info("PARSING USER USER GENE BASED FILE (" + omicName + ")... FINISHED. " + str(totalInputFeatures) + " FEATURES PROCESSED.")
@@ -341,7 +381,7 @@ class Job(Model):
                 #*************************************************************************
                 # STEP 3. MAP TH FEATURE NAMES TO KEGG IDs
                 #*************************************************************************
-                foundFeatures, parsedFeatures, notMatchedFeatures = mapFeatureNamesToKeggIDs(self.getJobID(), self.getOrganism(), self.getDatabases(), parsedFeatures, featureEnrichment)
+                foundFeatures, parsedFeatures, notMatchedFeatures = mapFeatureNamesToKeggIDs(self.getJobID(), self.getOrganism(), self.getDatabases(), parsedFeatures, enrichment)
                 totalMappedFeatures = len(parsedFeatures)
 
                 temporalFileName = self.getTemporalDir() +  "/" + omicName
@@ -537,7 +577,8 @@ class Job(Model):
                         lineProc = line[0]
 
                     # If the relevants file is not in BED format and contains more than 1 column, it means
-                    # that the second one contains the original ID
+                    # either that the second one contains the original ID or that we are parsing a relevant
+                    # associations file.
                     if len(line) > 1 and not isBedFormat:
                         featureID = ":::".join([line[0], line[1]]).lower()
                     else:
@@ -549,6 +590,27 @@ class Job(Model):
             logging.info("PARSING RELEVANT FEATURES FILE (" + fileName + ")... NO RELEVANT FEATURES FILE SUBMITTED" );
 
         return relevantFeatures
+
+
+    ##*************************************************************************************************************
+    # This function is used for parsing a file containing associations between genes and other features
+    #
+    # @param {type}
+    # @returns
+    ##*************************************************************************************************************
+    def parseAssociationsFile(self, fileName):
+        #TODO: HEADER
+        associationFeatures = defaultdict(set)
+        if os_path.isfile(fileName):
+            with open(fileName, 'rU') as inputDataFile:
+                for line in csv_reader(inputDataFile, delimiter="\t"):
+                    associationFeatures[line[1]].add(line[0])
+            inputDataFile.close()
+            logging.info("PARSING ASSOCIATIONS FILE (" + fileName + ")... THE FILE CONTAINS " + str(len(associationFeatures.keys())) + " ASSOCIATIONS" );
+        else:
+            logging.info("PARSING ASSOCIATIONS FILE (" + fileName + ")... NO ASSOCIATIONS SUBMITTED" );
+
+        return associationFeatures
 
     ##*************************************************************************************************************
     # This function...

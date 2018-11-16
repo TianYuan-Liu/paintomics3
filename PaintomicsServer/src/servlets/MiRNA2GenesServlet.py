@@ -133,8 +133,8 @@ def fromMiRNAtoGenes_STEP1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID, EXAMPLE_FI
         logging.info("  - selection_method             :" + jobInstance.selection_method)
         jobInstance.cutoff= formFields.get(namePrefix + "_cutoff", 0.5)
         logging.info("  - cutoff                  :" + str(jobInstance.cutoff))
-        jobInstance.featureEnrichment = formFields.get(namePrefix + "_feature_enrichment_pre", False)
-        logging.info("  - Feature Enrichment      :" + str(jobInstance.featureEnrichment))
+        jobInstance.enrichment = formFields.get(namePrefix + "_enrichment_pre", 'genes')
+        logging.info("  - Enrichment      :" + str(jobInstance.enrichment))
 
         #************************************************************************
         # Step 4. Queue job
@@ -211,7 +211,7 @@ def fromMiRNAtoGenes_STEP2(jobInstance, userID, exampleMode, RESPONSE):
             "mainOutputFileName":  fileNames[1],
             "secondOutputFileName":  fileNames[2],
             "description": jobInstance.description,
-            "featureEnrichment": jobInstance.featureEnrichment
+            "enrichment": jobInstance.enrichment
         })
 
     except Exception as ex:
