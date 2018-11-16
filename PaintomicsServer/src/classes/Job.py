@@ -23,7 +23,8 @@ from time import strftime as formatDate
 from os import path as os_path, makedirs as os_makedirs, walk as os_walk
 from shutil import rmtree as shutil_rmtree
 from csv import reader as csv_reader
-from numpy import percentile as numpy_percentile, min as numpy_min, max as numpy_max
+from collections import defaultdict
+from numpy import percentile as numpy_percentile, min as numpy_min, max as numpy_max, asarray, float32, logical_or, invert, sum as numpy_sum
 
 from src.common.Util import Model
 from Feature import Gene, Compound, OmicValue
@@ -342,56 +343,57 @@ class Job(Model):
                 #*************************************************************************
                 foundFeatures, parsedFeatures, notMatchedFeatures = mapFeatureNamesToKeggIDs(self.getJobID(), self.getOrganism(), self.getDatabases(), parsedFeatures, featureEnrichment)
                 totalMappedFeatures = len(parsedFeatures)
-                matchedFeaturesFileContent =""
-                notMatchedFeaturesFileContent =""
-
-                #TODO: HACER ESTE METODO MULTITHREADING -> locker
-                for parsedFeature in parsedFeatures:
-                    self.addInputGeneData(parsedFeature)
-                    matchedFeaturesFileContent += parsedFeature.getOmicsValues()[0].getInputName() + '\t' + parsedFeature.getName() + '\t' + parsedFeature.getID() +  '\t' + parsedFeature.getMatchingDB() +  '\t' + '\t'.join(map(str,parsedFeature.getOmicsValues()[0].getValues())) + "\n"
-
-                for parsedFeature in notMatchedFeatures:
-                    notMatchedFeaturesFileContent += parsedFeature.getName() + '\t' + '\t' + '\t'.join(map(str,parsedFeature.getOmicsValues()[0].getValues())) + "\n"
 
                 temporalFileName = self.getTemporalDir() +  "/" + omicName
 
-                file = open(temporalFileName + '_matched.txt', 'w')
-                file.write(matchedFeaturesFileContent)
-                file.close()
-                file = open(temporalFileName + '_unmatched.txt', 'w')
-                file.write(notMatchedFeaturesFileContent)
-                file.close()
+                with open(temporalFileName + '_matched.txt', 'w') as matchedFile:
+                    for parsedFeature in parsedFeatures:
+                        self.addInputGeneData(parsedFeature)
+                        matchedFile.write(parsedFeature.getOmicsValues()[
+                                                          0].getInputName() + '\t' + parsedFeature.getName() + '\t' + parsedFeature.getID() + '\t' + parsedFeature.getMatchingDB() + '\t' + '\t'.join(
+                            map(str, parsedFeature.getOmicsValues()[0].getValues())) + "\n")
+
+                with open(temporalFileName + '_unmatched.txt', 'w') as unmatchedFile:
+                    for parsedFeature in notMatchedFeatures:
+                        unmatchedFile.write(parsedFeature.getName() + '\t' + '\t' + '\t'.join(map(str,parsedFeature.getOmicsValues()[0].getValues())) + "\n")
 
             inputDataFile.close()
             #*************************************************************************
             # STEP 4. GENERATE SOME STATISTICS
             #*************************************************************************
+            logging.info("GENERATING STATISTICS FROM " + omicName + "...")
 
             # Avoid numpy calculations on empty files (fails on some versions)
             # Initialize summary as a zero filled list
             summary = [0] * 9
-            outliers = []
+            # outliers = []
 
             if len(allValues):
-                summary = numpy_percentile(allValues, [0, 10, 25, 50, 75, 90, 100])
+                # summary = numpy_percentile(allValues, [0, 10, 25, 50, 75, 90, 100])
+                numpyArray = asarray(allValues, dtype=float)
+                summary = numpy_percentile(numpyArray, [0, 10, 25, 50, 75, 90, 100])
 
                 interquartilRange = summary[4] - summary[2]
                 minVal =  summary[2] - 1.5*interquartilRange
                 maxVal =  summary[4] + 1.5*interquartilRange
 
-                for i in range(len(allValues)-1,-1,-1):
-                    if(allValues[i] < minVal or allValues[i] > maxVal):
-                        outliers.append(allValues[i])
-                        del allValues[i]
+                outlierMask = logical_or(numpyArray < minVal, numpyArray > maxVal)
+                # valuesOutliers = numpyArray[outlierMask]
+                # numpyArray = numpyArray[logical_and(numpyArray > minVal, numpyArray < maxVal)]
+                numpyArray = numpyArray[invert(outlierMask)]
 
-                #TODO: MEJORABLE meter en el bucle anterior
+                # for i in range(len(allValues)-1,-1,-1):
+                #     if(allValues[i] < minVal or allValues[i] > maxVal):
+                #         outliers.append(allValues[i])
+                #         del allValues[i]
+
                 try:
-                    summary = summary.tolist() + [numpy_min(allValues), numpy_max(allValues)]
+                    summary = summary.tolist() + [numpy_min(numpyArray), numpy_max(numpyArray)]
                 except:
-                    summary = summary + [numpy_min(allValues), numpy_max(allValues)]
+                    summary = summary + [numpy_min(numpyArray), numpy_max(numpyArray)]
 
             logging.info("DISTRIBUTION FOR " + omicName  + ": MIN: " + str(summary[0])  + "; p10: " + str(summary[1]) + "; q1: " + str(summary[2]) + ";  MEDIAN: " + str(summary[3])+ "; q1: " + str(summary[4])  + "; p90: " + str(summary[5]) + ";  MAX VALUE: " + str(summary[6]))
-            logging.info("DISTRIBUTION FOR " + omicName  + " WITHOUT OUTLIERS: MIN: " + str(summary[7])  + "; MAX: " + str(summary[8])  + "; #OUTLIERS: " + str(len(outliers)))
+            logging.info("DISTRIBUTION FOR " + omicName  + " WITHOUT OUTLIERS: MIN: " + str(summary[7])  + "; MAX: " + str(summary[8])  + "; #OUTLIERS: " + str(numpy_sum(outlierMask)))
 
             logging.info("PARSING USER GENE BASED FILE (" + omicName + ")... DONE" )
 
