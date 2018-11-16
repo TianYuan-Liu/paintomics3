@@ -335,7 +335,6 @@ def pathwayAcquisitionStep2_PART2(jobID, userID, selectedCompounds, clusterNumbe
     try :
         logging.info("STEP2 - LOADING JOB " + jobID + "...")
         jobInstance = JobInformationManager().loadJobInstance(jobID)
-        jobInstance.setUserID(userID)
 
         if(jobInstance == None):
             raise UserWarning("Job " + jobID + " was not found at database.")
@@ -437,7 +436,6 @@ def pathwayAcquisitionStep3(request, response):
         logging.info("STEP3 - LOADING JOB " + jobID + "...")
 
         jobInstance = JobInformationManager().loadJobInstance(jobID)
-        jobInstance.setUserID(userID)
 
         if(jobInstance == None):
             raise UserWarning("Job " + jobID + " was not found at database.")
