@@ -67,14 +67,14 @@ function PA_Step1JobView() {
 				type: "Proteomics",
 				fileType: "Proteomic quatification",
 				relevantFileType: "Relevant proteins list",
-				featureEnrichment: true
+				featureEnrichment: "features"
 			});
 		} else if (type === "metabolomics") {
 			newElem = new OmicSubmittingPanel(this.nFiles, {
 				type: "Metabolomics",
 				fileType: "Metabolomic quatification",
 				relevantFileType: "Relevant Compound list",
-				featureEnrichment: true
+				featureEnrichment: "features"
 			});
 		} else if (type === "mirnaseq") {
 			newElem = new OmicSubmittingPanel(this.nFiles, {
@@ -508,8 +508,8 @@ function DefaultSubmittingPanel(nElem, options) {
 	/***********************************************************************
 	* OTHER FUNCTIONS
 	***********************************************************************/
-	this.toogleContent = function() {
-		var component = this.getComponent().queryById("itemsContainerAlt");
+	this.toogleContent = function(alternativeComponent="itemsContainerAlt") {
+		var component = this.getComponent().queryById(alternativeComponent);
 		var isVisible = component.isVisible();
 		component.setVisible(!isVisible);
 		component.setDisabled(isVisible);
@@ -541,7 +541,7 @@ function OmicSubmittingPanel(nElem, options) {
 	this.mapTo = "Gene";
 	this.fileType = null;
 	this.relevantFileType = null;
-	this.featureEnrichment = false;
+	this.featureEnrichment = "genes";
 
 	this.class = "otherFileBox";
 
@@ -559,7 +559,7 @@ function OmicSubmittingPanel(nElem, options) {
 		this.relevantFileType = options.relevantFileType;
 		this.type = this.title.replace(" ", "").toLowerCase();
 		this.class = this.type + "FileBox";
-		this.featureEnrichment = options.featureEnrichment || false;
+		this.featureEnrichment = options.featureEnrichment || "genes";
 	}
 	/*********************************************************************
 	* GETTERS AND SETTERS
@@ -705,7 +705,7 @@ function OmicSubmittingPanel(nElem, options) {
 						{
 							xtype: 'combo',
 							fieldLabel: 'Enrichment type',
-							name: this.namePrefix + '_feature_enrichment',
+							name: this.namePrefix + '_enrichment',
 							hidden: this.omicName !== "",
 							value: this.featureEnrichment.toString(),
 							displayField: 'name', valueField: 'value',
@@ -714,8 +714,8 @@ function OmicSubmittingPanel(nElem, options) {
 							store: Ext.create('Ext.data.ArrayStore', {
 								fields: ['name', 'value'],
 								data: [
-									['Genes', 'false'],
-									['Features', 'true']
+									['Genes', 'genes'],
+									['Features', 'features']
 								]
 							}),
 							helpTip: "Define how the Fisher contingency table must be done: counting genes or features (i.e: microRNA, proteins...)."
@@ -785,7 +785,7 @@ function RegionBasedOmicSubmittingPanel(nElem, options) {
 	this.mapTo = "Gene";
 	this.fileType = null;
 	this.relevantFileType = null;
-	this.featureEnrichment = false;
+	this.featureEnrichment = "genes";
 
 	this.allowToogle = options.allowToogle !== false;
 	this.removable = options.removable !== false;
@@ -901,6 +901,12 @@ function RegionBasedOmicSubmittingPanel(nElem, options) {
 				itemId: "toogleMapRegions",
 				hidden: !this.allowToogle,
 				html: '<div class="checkbox" style=" margin: 10px 50px; font-size: 16px; "><input type="checkbox" id="' + this.namePrefix + '_mapRegions"><label for="' + this.namePrefix + '_mapRegions">My regions are already mapped to Gene IDs, skip this step.</label></div>'
+			},
+			{
+				xtype: "box",
+				itemId: "toogleUseAssociations",
+				hidden: !this.allowToogle,
+				html: '<div class="checkbox" style=" margin: 10px 50px; font-size: 16px; "><input type="checkbox" id="' + this.namePrefix + '_useAssociations"><label for="' + this.namePrefix + '_useAssociations">Provide own associations lists.</label></div>'
 			}, {
 				xtype: "container",
 				itemId: "itemsContainerAlt",
@@ -988,7 +994,7 @@ function RegionBasedOmicSubmittingPanel(nElem, options) {
 					xtype: 'combo',
 					itemId: 'enrichmentType',
 					fieldLabel: 'Enrichment type',
-					name: this.namePrefix + '_feature_enrichment',
+					name: this.namePrefix + '_enrichment',
 					hidden: this.omicName !== "",
 					value: this.featureEnrichment.toString(),
 					displayField: 'name', valueField: 'value',
@@ -997,11 +1003,127 @@ function RegionBasedOmicSubmittingPanel(nElem, options) {
 					store: Ext.create('Ext.data.ArrayStore', {
 						fields: ['name', 'value'],
 						data: [
-							['Genes', 'false'],
-							['Features', 'true']
+							['Genes', 'genes'],
+							['Features', 'features'],
+							['Associations', 'associations']
 						]
 					}),
-					helpTip: "Define how the Fisher contingency table must be done: counting genes or features (i.e: microRNA, proteins...)."
+					helpTip: "Define how the Fisher contingency table must be done: counting genes, features (i.e: microRNA, proteins...) or associations (combination of feature & gene)."
+				}]
+			}, {
+				xtype: "container",
+				itemId: "itemsContainerAssociations",
+				layout: {
+					align: 'stretch',
+					type: 'vbox'
+				},
+				disabled: true,
+				defaults: {
+					labelAlign: "right",
+					labelWidth: 150,
+					maxLength: 100,
+					maxWidth: 500
+				},
+				hidden: true,
+				items: [{
+					xtype: 'combo',
+					fieldLabel: 'Omic Name',
+					name: this.namePrefix + '_omic_name',
+					value: this.omicName,
+					itemId: "omicNameField",
+					displayField: 'name',
+					valueField: 'name',
+					emptyText: 'Type or choose the omic type',
+					queryMode: 'local',
+					hidden: this.omicName !== "",
+					editable: true,
+					allowBlank: false,
+					store: Ext.create('Ext.data.ArrayStore', {
+						fields: ['name'],
+						autoLoad: true,
+						proxy: {
+							type: 'ajax',
+							url: 'resources/data/all_omics.json',
+							reader: {
+								type: 'json',
+								root: 'omics',
+								successProperty: 'success'
+							}
+						}
+					})
+				}, {
+					xtype: "myFilesSelectorButton",
+					fieldLabel: 'Data file',
+					namePrefix: this.namePrefix,
+					itemId: "mainFileSelector",
+					helpTip: "Upload the feature quantification file (Gene expression, proteomics quantification,...) or choose it from your data folder."
+				}, {
+					xtype: 'textfield',
+					fieldLabel: 'File Type',
+					name: this.namePrefix + '_file_type',
+					itemId: "fileTypeSelector",
+					value: "Map file (features mapped to Genes)",
+					hidden: true,
+					helpTip: "Specify the type of data for uploaded file (Gene Expression file, Proteomic quatification,...)."
+				}, {
+					xtype: "myFilesSelectorButton",
+					fieldLabel: 'Relevant features file',
+					namePrefix: this.namePrefix + '_relevant',
+					itemId: "secondaryFileSelector",
+					helpTip: "Upload the list of relevant features (relevant genes, relevant proteins,...)."
+				}, {
+					xtype: 'textfield',
+					fieldLabel: 'File Type',
+					name: this.namePrefix + '_relevant_file_type',
+					itemId: "relevantFileTypeSelector",
+					value: "Relevant regulators list (mapped to Genes)",
+					hidden: true,
+					helpTip: "Specify the type of data for uploaded file (Relevant Genes list, Relevant proteins list,...)."
+				}, {
+					xtype: "myFilesSelectorButton",
+					fieldLabel: 'Associations file',
+					namePrefix: this.namePrefix + '_associations',
+					itemId: "mainAssociationFileSelector",
+					helpTip: "Upload the 2 column association file associating genes with features or choose it from your data folder."
+				}, {
+					xtype: "myFilesSelectorButton",
+					fieldLabel: 'Relevant associations file',
+					namePrefix: this.namePrefix + '_relevant_associations',
+					itemId: "secondaryAssociationFileSelector",
+					helpTip: "Upload the 2 column list of relevant associations (gene - feature) or choose it from your data folder."
+				}, {
+					xtype: 'textfield',
+					fieldLabel: 'Map to',
+					name: this.namePrefix + '_match_type',
+					itemId: "mapToSelector",
+					value: this.mapTo,
+					hidden: true
+				},{
+					xtype: 'textfield',
+					name: this.namePrefix + '_config_args',
+					hidden: true,
+					itemId: 'configVars',
+					maxLength: 1000
+				},
+				{
+					xtype: 'combo',
+					itemId: 'enrichmentType',
+					fieldLabel: 'Enrichment type',
+					name: this.namePrefix + '_enrichment',
+					hidden: this.omicName !== "",
+					value: this.featureEnrichment.toString(),
+					displayField: 'name', valueField: 'value',
+					editable: false,
+					allowBlank: false,
+					store: Ext.create('Ext.data.ArrayStore', {
+						fields: ['name', 'value'],
+						data: [
+							['Genes', 'genes'],
+							['Features', 'features'],
+							['Associations', 'associations']
+						]
+					}),
+					helpTip: "Define how the Fisher contingency table must be done: counting genes, features (i.e: microRNA, proteins...) or the relevant associations (combination of genes & features)."
 				}]
 			}, {
 				xtype: "container",
@@ -1233,7 +1355,7 @@ function RegionBasedOmicSubmittingPanel(nElem, options) {
 				},{
 					xtype: 'combo',
 					fieldLabel: 'Enrichment type',
-					name: this.namePrefix + '_feature_enrichment_pre',
+					name: this.namePrefix + '_enrichment_pre',
 					hidden: this.omicName !== "",
 					value: this.featureEnrichment.toString(),
 					displayField: 'name', valueField: 'value',
@@ -1242,11 +1364,12 @@ function RegionBasedOmicSubmittingPanel(nElem, options) {
 					store: Ext.create('Ext.data.ArrayStore', {
 						fields: ['name', 'value'],
 						data: [
-							['Genes', 'false'],
-							['Features', 'true']
+							['Genes', 'genes'],
+							['Features', 'features'],
+							['Associations', 'associations']
 						]
 					}),
-					helpTip: "Define how the Fisher contingency table must be done: counting genes or features (i.e: microRNA, proteins...)."
+					helpTip: "Define how the Fisher contingency table must be done: counting genes, features (i.e: microRNA, proteins...) or associations (combination of genes & features)."
 				},{
 					xtype: 'fieldcontainer',
 					fieldLabel: 'Report',
@@ -1357,9 +1480,12 @@ function RegionBasedOmicSubmittingPanel(nElem, options) {
 		isValid: function() {
 			var valid = true;
 			var component = this.queryById("itemsContainerAlt");
-
 			if (!component.isVisible()) {
-				component = this.queryById("itemsContainer");
+				component = this.queryById("itemsContainerAssociations");
+
+				if (!component.isVisible()) {
+					component = this.queryById("itemsContainer");
+				}
 			}
 			var items = component.query("field");
 			for (var i in items) {
@@ -1387,7 +1513,11 @@ function RegionBasedOmicSubmittingPanel(nElem, options) {
 		isEmpty: function() {
 			var component = this.queryById("itemsContainerAlt");
 			if (!component.isVisible()) {
-				component = this.queryById("itemsContainer");
+				component = this.queryById("itemsContainerAssociations");
+
+				if (!component.isVisible()) {
+					component = this.queryById("itemsContainer");
+				}
 			}
 			var empty = true;
 			if (component.queryById("mainFileSelector").getValue() !== "") {
@@ -1404,7 +1534,13 @@ function RegionBasedOmicSubmittingPanel(nElem, options) {
 				initializeTooltips(".helpTip");
 
 				$("#" + me.namePrefix + "_mapRegions").change(function() {
+					me.getComponent().queryById("toogleUseAssociations").setVisible(! $(this).is(':checked'));
 					me.toogleContent();
+				});
+
+				$("#" + me.namePrefix + "_useAssociations").change(function() {
+					me.getComponent().queryById("toogleMapRegions").setVisible(! $(this).is(':checked'));
+					me.toogleContent("itemsContainerAssociations");
 				});
 
 				$(this.getEl().dom).find("a.deleteOmicBox").click(function() {
@@ -1433,7 +1569,7 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 	this.mapTo = "Gene";
 	this.fileType = null;
 	this.relevantFileType = null;
-	this.featureEnrichment = false;
+	this.featureEnrichment = "genes";
 
 	this.allowToogle = options.allowToogle !== false;
 	this.removable = options.removable !== false;
@@ -1552,6 +1688,12 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 				html: '<div class="checkbox" style=" margin: 10px 50px; font-size: 16px; "><input type="checkbox" id="' + this.namePrefix + '_mapRegions"><label for="' + this.namePrefix + '_mapRegions">My features are already mapped to Gene IDs, skip this step.</label></div>'
 			},
 			{
+				xtype: "box",
+				itemId: "toogleUseAssociations",
+				hidden: !this.allowToogle,
+				html: '<div class="checkbox" style=" margin: 10px 50px; font-size: 16px; "><input type="checkbox" id="' + this.namePrefix + '_useAssociations"><label for="' + this.namePrefix + '_useAssociations">Provide own associations lists.</label></div>'
+			},
+			{
 				xtype: "container",
 				itemId: "itemsContainerAlt",
 				layout: {
@@ -1638,7 +1780,7 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 					xtype: 'combo',
 					itemId: 'enrichmentType',
 					fieldLabel: 'Enrichment type',
-					name: this.namePrefix + '_feature_enrichment',
+					name: this.namePrefix + '_enrichment',
 					hidden: this.omicName !== "",
 					value: this.featureEnrichment.toString(),
 					displayField: 'name', valueField: 'value',
@@ -1647,14 +1789,129 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 					store: Ext.create('Ext.data.ArrayStore', {
 						fields: ['name', 'value'],
 						data: [
-							['Genes', 'false'],
-							['Features', 'true']
+							['Genes', 'genes'],
+							['Features', 'features'],
+							['Associations', 'associations']
 						]
 					}),
-					helpTip: "Define how the Fisher contingency table must be done: counting genes or features (i.e: microRNA, proteins...)."
+					helpTip: "Define how the Fisher contingency table must be done: counting genes, features (i.e: microRNA, proteins...) or associations (combination of genes & features)."
 				}]
-			},
-			{
+			}, {
+				xtype: "container",
+				itemId: "itemsContainerAssociations",
+				layout: {
+					align: 'stretch',
+					type: 'vbox'
+				},
+				disabled: true,
+				defaults: {
+					labelAlign: "right",
+					labelWidth: 150,
+					maxLength: 100,
+					maxWidth: 500
+				},
+				hidden: true,
+				items: [{
+					xtype: 'combo',
+					fieldLabel: 'Omic Name',
+					name: this.namePrefix + '_omic_name',
+					value: this.omicName,
+					itemId: "omicNameField",
+					displayField: 'name',
+					valueField: 'name',
+					emptyText: 'Type or choose the omic type',
+					queryMode: 'local',
+					hidden: this.omicName !== "",
+					editable: true,
+					allowBlank: false,
+					store: Ext.create('Ext.data.ArrayStore', {
+						fields: ['name'],
+						autoLoad: true,
+						proxy: {
+							type: 'ajax',
+							url: 'resources/data/all_omics.json',
+							reader: {
+								type: 'json',
+								root: 'omics',
+								successProperty: 'success'
+							}
+						}
+					})
+				}, {
+					xtype: "myFilesSelectorButton",
+					fieldLabel: 'Data file',
+					namePrefix: this.namePrefix,
+					itemId: "mainFileSelector",
+					helpTip: "Upload the feature quantification file (Gene expression, proteomics quantification,...) or choose it from your data folder."
+				}, {
+					xtype: 'textfield',
+					fieldLabel: 'File Type',
+					name: this.namePrefix + '_file_type',
+					itemId: "fileTypeSelector",
+					value: "Map file (features mapped to Genes)",
+					hidden: true,
+					helpTip: "Specify the type of data for uploaded file (Gene Expression file, Proteomic quatification,...)."
+				}, {
+					xtype: "myFilesSelectorButton",
+					fieldLabel: 'Relevant features file',
+					namePrefix: this.namePrefix + '_relevant',
+					itemId: "secondaryFileSelector",
+					helpTip: "Upload the list of relevant features (relevant genes, relevant proteins,...)."
+				}, {
+					xtype: 'textfield',
+					fieldLabel: 'File Type',
+					name: this.namePrefix + '_relevant_file_type',
+					itemId: "relevantFileTypeSelector",
+					value: "Relevant regulators list (mapped to Genes)",
+					hidden: true,
+					helpTip: "Specify the type of data for uploaded file (Relevant Genes list, Relevant proteins list,...)."
+				}, {
+					xtype: "myFilesSelectorButton",
+					fieldLabel: 'Associations file',
+					namePrefix: this.namePrefix + '_associations',
+					itemId: "mainAssociationFileSelector",
+					helpTip: "Upload the 2 column association file associating genes with features or choose it from your data folder."
+				}, {
+					xtype: "myFilesSelectorButton",
+					fieldLabel: 'Relevant associations file',
+					namePrefix: this.namePrefix + '_relevant_associations',
+					itemId: "secondaryAssociationFileSelector",
+					helpTip: "Upload the 2 column list of relevant associations (gene - feature) or choose it from your data folder."
+				}, {
+					xtype: 'textfield',
+					fieldLabel: 'Map to',
+					name: this.namePrefix + '_match_type',
+					itemId: "mapToSelector",
+					value: this.mapTo,
+					hidden: true
+				},{
+					xtype: 'textfield',
+					name: this.namePrefix + '_config_args',
+					hidden: true,
+					itemId: 'configVars',
+					maxLength: 1000
+				},
+				{
+					xtype: 'combo',
+					itemId: 'enrichmentType',
+					fieldLabel: 'Enrichment type',
+					name: this.namePrefix + '_enrichment',
+					hidden: this.omicName !== "",
+					value: this.featureEnrichment.toString(),
+					displayField: 'name', valueField: 'value',
+					editable: false,
+					allowBlank: false,
+					store: Ext.create('Ext.data.ArrayStore', {
+						fields: ['name', 'value'],
+						data: [
+							['Genes', 'genes'],
+							['Features', 'features'],
+							['Associations', 'associations']
+						]
+					}),
+					helpTip: "Define how the Fisher contingency table must be done: counting genes, features (i.e: microRNA, proteins...) or the relevant associations (combination of genes & features)."
+				}]
+			}, {
 				xtype: "container",
 				itemId: "itemsContainer",
 				layout: {
@@ -1886,7 +2143,7 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 				{
 					xtype: 'combo',
 					fieldLabel: 'Enrichment type',
-					name: this.namePrefix + '_feature_enrichment_pre',
+					name: this.namePrefix + '_enrichment_pre',
 					hidden: this.omicName !== "",
 					value: this.featureEnrichment.toString(),
 					displayField: 'name', valueField: 'value',
@@ -1895,11 +2152,12 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 					store: Ext.create('Ext.data.ArrayStore', {
 						fields: ['name', 'value'],
 						data: [
-							['Genes', 'false'],
-							['Features', 'true']
+							['Genes', 'genes'],
+							['Features', 'features'],
+							['Associations', 'associations']
 						]
 					}),
-					helpTip: "Define how the Fisher contingency table must be done: counting genes or features (i.e: microRNA, proteins...)."
+					helpTip: "Define how the Fisher contingency table must be done: counting genes, features (i.e: microRNA, proteins...) or associations (combination of genes & features)."
 				}
 			]
 		}],
@@ -1909,9 +2167,12 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 		isValid: function() {
 			var valid = true;
 			var component = this.queryById("itemsContainerAlt");
-
 			if (!component.isVisible()) {
-				component = this.queryById("itemsContainer");
+				component = this.queryById("itemsContainerAssociations");
+
+				if (!component.isVisible()) {
+					component = this.queryById("itemsContainer");
+				}
 			}
 			var items = component.query("field");
 			for (var i in items) {
@@ -1936,7 +2197,11 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 		isEmpty: function() {
 			var component = this.queryById("itemsContainerAlt");
 			if (!component.isVisible()) {
-				component = this.queryById("itemsContainer");
+				component = this.queryById("itemsContainerAssociations");
+
+				if (!component.isVisible()) {
+					component = this.queryById("itemsContainer");
+				}
 			}
 			var empty = true;
 			if (component.queryById("mainFileSelector").getValue() !== "") {
@@ -1953,7 +2218,15 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 				initializeTooltips(".helpTip");
 
 				$("#" + me.namePrefix + "_mapRegions").change(function() {
+					//$("#" + me.namePrefix + "_useAssociations").prop('disabled', $(this).is(':checked'));
+					me.getComponent().queryById("toogleUseAssociations").setVisible(! $(this).is(':checked'));
 					me.toogleContent();
+				});
+
+				$("#" + me.namePrefix + "_useAssociations").change(function() {
+					// $("#" + me.namePrefix + "_mapRegions").prop('disabled', $(this).is(':checked'));
+					me.getComponent().queryById("toogleMapRegions").setVisible(! $(this).is(':checked'));
+					me.toogleContent("itemsContainerAssociations");
 				});
 
 				$(this.getEl().dom).find("a.deleteOmicBox").click(function() {

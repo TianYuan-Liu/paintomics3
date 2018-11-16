@@ -437,10 +437,11 @@ function PA_Step4PathwayView() {
 			
 			omicsValues[featureName].getOmicsValues().forEach(function(omicValue) {
 				
-				matchedFeatures[omicValue.omicName][keggName] = matchedFeatures[omicValue.omicName][keggName] || {isRelevant: false, inputNames: []};
+				matchedFeatures[omicValue.omicName][keggName] = matchedFeatures[omicValue.omicName][keggName] || {isRelevant: false, isRelevantAssociation: false, inputNames: []};
 				
 				matchedFeatures[omicValue.omicName][keggName] = {
 					isRelevant: matchedFeatures[omicValue.omicName][keggName].isRelevant || omicValue.relevant,
+					isRelevantAssociation: matchedFeatures[omicValue.omicName][keggName].isRelevantAssociation || omicValue.relevantAssociation,
 					inputNames: matchedFeatures[omicValue.omicName][keggName].inputNames.concat(omicValue.originalName || omicValue.getInputName())
 				};
 			})
@@ -1394,6 +1395,10 @@ function PA_Step4KeggDiagramFeatureSetTooltip() {
 					htmlTitle += "<i class='featureNameLabelRelevant relevantFeature'></i>";
 				}
 
+				if (mainFeatureSetItem.getFeature().isRelevantAssociation()) {
+					htmlTitle += "<i class='featureNameLabelRelevant relevantAssociationFeature'></i>";
+				}
+
 				$(domEl).find(".boxTitleLabel span").html(htmlTitle).show();
 
 				showBoxTitle = true;
@@ -1434,6 +1439,9 @@ function PA_Step4KeggDiagramFeatureSetTooltip() {
 		
 		if (boxTitle == undefined && mainFeatureSetItem.getFeature().isRelevant()) {
 			htmlTitle += "<i class='featureNameLabelRelevant relevantFeature'></i>";
+		}
+		if (boxTitle == undefined && mainFeatureSetItem.getFeature().isRelevantAssociation()) {
+			htmlTitle += "<i class='featureNameLabelRelevant relevantAssociationFeature'></i>";
 		}
 		
 		this.getComponent().setTitle(htmlTitle);
@@ -1487,7 +1495,7 @@ function PA_Step4KeggDiagramFeatureSetTooltip() {
 				{
 					xtype: "box", html:
 					'<div class="boxTitleLabel" style="text-align: center; display: none;">' +
-					'  <span>Event title</span>' +
+					'  <span>Unnamed event</span>' +
 					'  <div class="twoOptionsButtonWrapper">' +
 					'      <a href="javascript:void(0)" class="button twoOptionsButton" name="genes">Genes</a>' +
 					'      <a href="javascript:void(0)" class="button twoOptionsButton" name="metagenes">Metagenes</a>' +
@@ -1649,7 +1657,7 @@ function PA_Step4KeggDiagramFeatureView(showButtons) {
 		//UPDATE THE NAME OF THE FEATURE
 		var componentNames = this.getModel().getFeature().getName().split(",");
 		$(componentID + " .featureNameLabel").text(" " + componentNames[0]);
-		$(componentID + " .featureNameLabelRelevant").toggle(this.getModel().getFeature().isRelevant());
+		$(componentID + " .featureNameLabelRelevant").toggle(this.getModel().getFeature().isRelevant()|this.getModel().getFeature().isRelevantAssociation());
 
 		//Do not render if the component was never expanded (lazy rendering)
 		if($(componentID).hasClass("neverExpanded")){
@@ -1664,7 +1672,7 @@ function PA_Step4KeggDiagramFeatureView(showButtons) {
 		var omicsValues = this.getModel().getFeature().getOmicsValues();
 		var specie = application.getMainView().currentView.getModel().getOrganism();
 
-		if (this.getModel().getFeature().isRelevant()) {
+		if (this.getModel().getFeature().isRelevant() || this.getModel().getFeature().isRelevantAssociation()) {
 			$(componentID + " .relevantFeatureField").show();
 		} else {
 			$(componentID + " .relevantFeatureField").hide();
@@ -1859,12 +1867,20 @@ function PA_Step4KeggDiagramFeatureView(showButtons) {
 				allOmicValues.forEach(function(omicValues) {
 					x = 0;
 					
-					shownameValue = omicValues.inputName != omicValues.originalName && omicValues.originalName !== undefined ?
+					var shownameValue = omicValues.inputName != omicValues.originalName && omicValues.originalName !== undefined ?
 						omicValues.originalName + ": " + omicValues.inputName :
 						omicValues.inputName
+					var relevantSymbols = "";
 
-					serie = {name: (omicValues.isRelevant() === true ? "* " : "") + omicName + "#" + shownameValue};
-					yAxisCat.push((omicValues.isRelevant() === true ? "* " : "") + omicName + "#" + shownameValue);
+					if (omicValues.isRelevant() === true) {
+						relevantSymbols += "* ";
+					}
+					if (omicValues.isRelevantAssociation() === true) {
+						relevantSymbols += "^ ";
+					}
+
+					serie = {name: relevantSymbols + omicName + "#" + shownameValue};
+					yAxisCat.push(relevantSymbols + omicName + "#" + shownameValue);
 
 					values = omicValues.getValues();
 					serie.data = [];
@@ -1924,6 +1940,11 @@ function PA_Step4KeggDiagramFeatureView(showButtons) {
 		
 		var headers = this.getParent("PA_Step4JobView").getModel().getOmicHeaders();
 
+		var replaceSymbols = {
+			"*": '<i class="relevantFeature"></i>',
+			"^": '<i class="relevantAssociationFeature"></i>'
+		};
+
 		var heatmap = new Highcharts.Chart({
 			chart: {type: 'heatmap',renderTo: divID, height: chartHeight},
 			title: null,
@@ -1933,7 +1954,7 @@ function PA_Step4KeggDiagramFeatureView(showButtons) {
 				borderColor: "#333",
 				formatter: function() {
 					var title = this.point.series.name.split("#");
-					var omicHeader = headers[title[0].replace('*', '').trim()] || [];
+					var omicHeader = headers[title[0].replace(/[\*\^]/g, '').trim()] || [];
 					
 					if (omicHeader[this.point.index + 1]) {
 						var headerField = omicHeader[this.point.index + 1];
@@ -1955,7 +1976,7 @@ function PA_Step4KeggDiagramFeatureView(showButtons) {
 					}
 					
 					title[1] = (title.length > 1) ? title[1] : "";
-					return "<b>" + title[0].replace("*", '<i class="relevantFeature"></i>') + "</b><br/>" + "<i class='tooltipInputName'>" + title[1] + "</i>" + (this.point.value === null ? "No data" : this.point.value);
+					return "<b>" + title[0].replace(/[\*\^]/g, function(c) { return replaceSymbols[c]; }) + "</b><br/>" + "<i class='tooltipInputName'>" + title[1] + "</i>" + (this.point.value === null ? "No data" : this.point.value);
 				},
 				useHTML: true
 			},
@@ -1971,7 +1992,7 @@ function PA_Step4KeggDiagramFeatureView(showButtons) {
 						if (this.value.split) {
 							var title = this.value.split("#");
 							title[1] = (title.length > 1) ? title[1] : "No data";
-							return ((title[0].length > 10) ? title[0].substring(0, 10) + "..." : title[0]).replace("*", '<i class="relevantFeature"></i>') +
+							return ((title[0].length > 10) ? title[0].substring(0, 10) + "..." : title[0]).replace(/[\*\^]/g, function(c) { return replaceSymbols[c]; }) +
 						'</br><i class="tooltipInputName yAxisLabel">' + ((title[1].length > 10) ? title[1].substring(0, 10) + "..." : title[1]) + '</i>';					
 						}
 						
@@ -2243,6 +2264,7 @@ function PA_Step4KeggDiagramFeatureSetSVGBox() {
 		var featureGraphicalData = this.getModel().getFeatureGraphicalData();
 		var boxTitle = featureGraphicalData.getBoxTitle() != undefined ? featureGraphicalData.getBoxTitle() : feature.getName();
 		var isRelevant = feature.isRelevant();
+		var isRelevantAssociation = feature.isRelevantAssociation();
 
 		/*FILTER THE LIST OF OMICS TO GET ONLY THE "GENE" BASED OMICS OR THE COMPOUND BASED OMICS*/
 		var visibleOmics = visualOptions.visibleOmics.filter(function(elem) {
@@ -2319,7 +2341,7 @@ function PA_Step4KeggDiagramFeatureSetSVGBox() {
 			context.fill();
 		}
 
-		if (isRelevant === true) {
+		if (isRelevant === true || isRelevantAssociation === true) {
 			context.strokeStyle = '#000';
 		}
 
@@ -2342,7 +2364,19 @@ function PA_Step4KeggDiagramFeatureSetSVGBox() {
 			context.stroke();
 			context.font = "normal 35px FontAwesome";
 			context.fillStyle = '#FFFFFF';
-			context.fillText('\uf005', xPos + width - 57, 40);
+			context.fillText('\uf005', xPos + width - 57, 37);
+		}
+		if (isRelevantAssociation === true) {
+			context.beginPath();
+			context.arc(xPos + 30, 25, 25, 0, 2 * Math.PI, false);
+			context.fillStyle = '#f4c800';
+			context.fill();
+			context.lineWidth = 5;
+			context.strokeStyle = '#003300';
+			context.stroke();
+			context.font = "normal 35px FontAwesome";
+			context.fillStyle = '#FFFFFF';
+			context.fillText('\uf005', xPos + 12, 37);
 		}
 		//Add "more" glyph if not unique
 		if (!this.isUnique) {
@@ -3031,7 +3065,7 @@ function PA_Step4GlobalHeatmapView() {
 				var featureName = omicsValues[matchedFeatures[i]].getName();
 
 				//PUSH IF USER CHOOSE all OR IF FEATURE IS RELEVANT
-				if (selectedOmics[omicValue.omicName] === "all" || omicValue.isRelevant()) {
+				if (selectedOmics[omicValue.omicName] === "all" || omicValue.isRelevant() || omicValue.isRelevantAssociation()) {
 					referenceOmics = dataMatrix;
 				} else {
 					referenceOmics = otherDataMatrix;
@@ -3042,6 +3076,7 @@ function PA_Step4GlobalHeatmapView() {
 					keggName: omicsValues[matchedFeatures[i]].getName(),
 					inputName: omicValue.originalName || omicValue.getInputName(),
 					isRelevant: omicValue.isRelevant(),
+					isRelevantAssociation: omicValue.isRelevantAssociation(),
 					values: omicValue.getValues()
 				});
 			}
@@ -3114,7 +3149,7 @@ function PA_Step4GlobalHeatmapView() {
 			omicValues = [];
 			//EXTRACT GENES FOR EACH REMAINING OMIC
 			for (var i = orderedGenes.length; i--;) {
-				featureName = orderedGenes[i].split("#")[0].replace("* ", "");
+				featureName = orderedGenes[i].split("#")[0].replace(/[\*\^]/g, "");
 
 				if (dataMatrix[omicName][featureName] !== undefined) {
 					dataMatrix[omicName][featureName].map(x => omicValues.push(x));
@@ -3126,6 +3161,7 @@ function PA_Step4GlobalHeatmapView() {
 						keggName: featureName,
 						inputName: "NO DATA",
 						isRelevant: false,
+						isRelevantAssociation: false,
 						values: null
 					});
 				}
@@ -3164,17 +3200,26 @@ function PA_Step4GlobalHeatmapView() {
 			//Get the values and the name for the new serie
 			featureValues = omicsValues[i].values;
 
-			shownameValue = omicsValues[i].inputName != omicsValues[i].originalName && omicsValues[i].originalName !== undefined ?
+			var shownameValue = omicsValues[i].inputName != omicsValues[i].originalName && omicsValues[i].originalName !== undefined ?
 				omicsValues[i].originalName + ": " + omicsValues[i].inputName :
 				omicsValues[i].inputName
 
+				var relevantSymbols = "";
+
+				if (omicsValues[i].isRelevant === true) {
+					relevantSymbols += "* ";
+				}
+				if (omicsValues[i].isRelevantAssociation === true) {
+					relevantSymbols += "^ ";
+				}
+
 			serie = {
-				name: (omicsValues[i].isRelevant === true ? "* " : "") + omicsValues[i].keggName + "#" + shownameValue,
+				name: relevantSymbols + omicsValues[i].keggName + "#" + shownameValue,
 				data: [],
 				turboThreshold: Number.MAX_VALUE
 			};
 			//Add the name for the row (e.g. MagoHb or "miRNA my_mirnaid_1")
-			yAxisCat.push((omicsValues[i].isRelevant === true ? "* " : "") + omicsValues[i].keggName + "#" + shownameValue);
+			yAxisCat.push(relevantSymbols + omicsValues[i].keggName + "#" + shownameValue);
 
 			if (featureValues !== null) {
 				for (var j in featureValues) {
@@ -3218,6 +3263,11 @@ function PA_Step4GlobalHeatmapView() {
 			xAxisCat.push("Timepoint " + (i + 1));
 		}
 
+		var replaceSymbols = {
+			"*": '<i class="relevantFeature"></i>',
+			"^": '<i class="relevantAssociationFeature"></i>'
+		};
+
 		//STEP 2. DRAW THE HEATMAP
 		var heatmap = new Highcharts.Chart({
 			chart: {
@@ -3237,7 +3287,7 @@ function PA_Step4GlobalHeatmapView() {
 				formatter: function() {
 					var title = this.point.series.name.split("#");
 					title[1] = (title.length > 1) ? title[1] : "";
-					return "<b>" + title[0].replace("*", '<i class="relevantFeature"></i>') + "</b><br/>" + "<i class='tooltipInputName'>" + title[1] + "</i>" + (this.point.value === null ? "No data" : this.point.value);
+					return "<b>" + title[0].replace(/[\*\^]/g, function(c) { return replaceSymbols[c]; }) + "</b><br/>" + "<i class='tooltipInputName'>" + title[1] + "</i>" + (this.point.value === null ? "No data" : this.point.value);
 				},
 				useHTML: true
 			},
@@ -3254,7 +3304,7 @@ function PA_Step4GlobalHeatmapView() {
 						if (this.value.split !== undefined) {
 							var title = this.value.split("#");
 							title[1] = (title.length > 1) ? title[1] : "No data";
-							return '<span style="width: 50px;display: block; text-align: right;">' + ((title[0].length > 10) ? title[0].substring(0, 5) + "..." + title[0].substring(title[0].length - 4, title[0].length) : title[0]).replace("*", '<i class="relevantFeature"></i>') + '</br><i class="tooltipInputName yAxisLabel">' + ((title[1].length > 10) ? title[1].substring(0, 5) + "..." + title[1].substring(title[1].length - 4, title[1].length) : title[1]) + '</i></span>';
+							return '<span style="width: 50px;display: block; text-align: right;">' + ((title[0].length > 10) ? title[0].substring(0, 5) + "..." + title[0].substring(title[0].length - 4, title[0].length) : title[0]).replace(/[\*\^]/g, function(c) { return replaceSymbols[c]; }) + '</br><i class="tooltipInputName yAxisLabel">' + ((title[1].length > 10) ? title[1].substring(0, 5) + "..." + title[1].substring(title[1].length - 4, title[1].length) : title[1]) + '</i></span>';
 						}
 					},
 					style: {fontSize: "9px"},
@@ -3274,14 +3324,14 @@ function PA_Step4GlobalHeatmapView() {
 								$("div.heatmapContainer").each(function() {
 									var heatmap = $(this).highcharts();
 									var serie = heatmap.series[me.series.index];
-									var keggName = me.series.name.split("#")[0].replace("* ", "");
+									var keggName = me.series.name.split("#")[0].replace(/[\*\^]\s/g, "");
 
-									if (serie !== undefined && serie.name.split("#")[0].replace("* ", "") === keggName) {
+									if (serie !== undefined && serie.name.split("#")[0].replace(/[\*\^]\s/g, "") === keggName) {
 										serie.showHeatmapSelector(undefined, me.y);
 										return true;
 									} else {
 										for (var i in heatmap.series) {
-											if (heatmap.series[i].name.split("#")[0].replace("* ", "") === keggName) {
+											if (heatmap.series[i].name.split("#")[0].replace(/[\*\^]\s/g, "") === keggName) {
 												heatmap.series[i].showHeatmapSelector();
 												return true;
 											}
@@ -3592,6 +3642,7 @@ function PA_Step4DetailsView() {
 					inputName: omicValue.inputName,
 					originalName: omicValue.originalName,
 					isRelevant: omicValue.isRelevant(),
+					isRelevantAssociation: omicValue.isRelevantAssociation(),
 					values: omicValue.getValues()
 				});
 			}
@@ -3673,13 +3724,22 @@ function PA_Step4DetailsView() {
 			x = 0;
 			//Get the values and the name for the new serie
 			featureValues = omicsValues[i].values;
-			shownameValue = omicsValues[i].inputName != omicsValues[i].originalName && omicsValues[i].originalName !== undefined ?
+			var shownameValue = omicsValues[i].inputName != omicsValues[i].originalName && omicsValues[i].originalName !== undefined ?
 				omicsValues[i].originalName + ": " + omicsValues[i].inputName :
 				omicsValues[i].inputName;
 
-			serie = {name: (omicsValues[i].isRelevant === true ? "* " : "") + omicsValues[i].keggName + "#" + shownameValue, data: []};
+			var relevantSymbols = "";
+
+			if (omicsValues[i].isRelevant === true) {
+				relevantSymbols += "* ";
+			}
+			if (omicsValues[i].isRelevantAssociation === true) {
+				relevantSymbols += "^ ";
+			}
+
+			serie = {name: relevantSymbols + omicsValues[i].keggName + "#" + shownameValue, data: []};
 			//Add the name for the row (e.g. MagoHb or "miRNA my_mirnaid_1")
-			yAxisCat.push((omicsValues[i].isRelevant === true ? "* " : "") + omicsValues[i].keggName + "#" + shownameValue);
+			yAxisCat.push(relevantSymbols + omicsValues[i].keggName + "#" + shownameValue);
 
 			var limits = getMinMax(dataDistributionSummaries[omicName], visualOptions.colorReferences[omicName]);
 
@@ -3702,6 +3762,11 @@ function PA_Step4DetailsView() {
 			xAxisCat.push("Timepoint " + (i + 1));
 		}
 
+		var replaceSymbols = {
+			"*": '<i class="relevantFeature"></i>',
+			"^": '<i class="relevantAssociationFeature"></i>'
+		};
+
 		var heatmap = new Highcharts.Chart({
 			chart: {type: 'heatmap', renderTo: targetID},
 			heatmapSelector: {color: '#000', lineWidth: 3},
@@ -3711,7 +3776,7 @@ function PA_Step4DetailsView() {
 				formatter: function () {
 					var title = this.point.series.name.split("#");
 					title[1] = (title.length > 1) ? title[1] : "";
-					return "<b>" + title[0].replace("*", '<i class="relevantFeature"></i>') + "</b><br/>" + "<i class='tooltipInputName'>" + title[1] + "</i>" + (this.point.value === null ? "No data" : this.point.value);
+					return "<b>" + title[0].replace(/[\*\^]/g, function(c) { return replaceSymbols[c]; }) + "</b><br/>" + "<i class='tooltipInputName'>" + title[1] + "</i>" + (this.point.value === null ? "No data" : this.point.value);
 				},
 				useHTML: true
 			},
@@ -3722,7 +3787,7 @@ function PA_Step4DetailsView() {
 					formatter: function () {
 						var title = this.value.split("#");
 						title[1] = (title.length > 1) ? title[1] : "No data";
-						return '<span style="width: 100px;display: block;   text-align: right;">' + ((title[0].length > 14) ? title[0].substring(0, 14) + "..." : title[0]).replace("*", '<i class="relevantFeature"></i>') +
+						return '<span style="width: 100px;display: block;   text-align: right;">' + ((title[0].length > 14) ? title[0].substring(0, 14) + "..." : title[0]).replace(/[\*\^]/g, function(c) { return replaceSymbols[c]; }) +
 						'</br><i class="tooltipInputName yAxisLabel">' + ((title[1].length > 14) ? title[1].substring(0, 14) + "..." : title[1]) + '</i></span>';
 					},
 					style: {fontSize: "9px"}, useHTML: true
@@ -3778,8 +3843,17 @@ function PA_Step4DetailsView() {
 				auxValues.push({y: omicsValue.values[j], marker: ((omicsValue.values[j] > limits.max || omicsValue.values[j] < limits.min) ? {fillColor: '#ff6e00'} : null)});
 			}
 
+			var relevantSymbols = "";
+
+			if (omicsValue.isRelevant === true) {
+				relevantSymbols += "* ";
+			}
+			if (omicsValue.isRelevantAssociation === true) {
+				relevantSymbols += "^ ";
+			}
+
 			series.push({
-				name: (omicsValue.isRelevant === true ? "* " : "") + omicsValue.keggName + "#" + omicsValue.inputName,
+				name: relevantSymbols + omicsValue.keggName + "#" + omicsValue.inputName,
 				type: 'spline',
 				data: auxValues
 			});
@@ -3796,6 +3870,10 @@ function PA_Step4DetailsView() {
 		for (var i = 0; i < maxX; i++) {
 			xAxisCat.push("Timepoint " + (i + 1));
 		}
+		var replaceSymbols = {
+			"*": '<i class="relevantFeature"></i>',
+			"^": '<i class="relevantAssociationFeature"></i>'
+		};
 		var plot = new Highcharts.Chart({
 			chart: {renderTo: targetID},
 			title: null, legend: {enabled: false}, credits: {enabled: false},
@@ -3804,7 +3882,7 @@ function PA_Step4DetailsView() {
 				formatter: function () {
 					var title = this.point.series.name.split("#");
 					title[1] = (title.length > 1) ? title[1] : "";
-					return "<b>" + title[0].replace("*", '<i class="relevantFeature"></i>') + "</b><br/>" + "<i class='tooltipInputName'>" + title[1] + "</i>" + (this.point.y === null ? "No data" : this.point.y);
+					return "<b>" + title[0].replace(/[\*\^]/g, function(c) { return replaceSymbols[c]; }) + "</b><br/>" + "<i class='tooltipInputName'>" + title[1] + "</i>" + (this.point.y === null ? "No data" : this.point.y);
 				},
 				useHTML: true
 			},

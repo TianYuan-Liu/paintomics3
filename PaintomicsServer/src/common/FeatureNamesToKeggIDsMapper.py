@@ -36,7 +36,7 @@ def getDatabasesByOrganismCode(organism):
     # dicDatabases is inside the conf file "organismDB" and should be
     # updated after installing new species with external annotation data.
 
-    return dicDatabases.get(organism, [{'KEGG': "kegg_id"}, "kegg_gene_symbol"])
+    return dicDatabases.get(organism, [{'KEGG': "kegg_id"}, {'KEGG': "kegg_gene_symbol"}])
 
 def getConnectionByOrganismCode(organism):
     """
@@ -117,7 +117,7 @@ def findGeneSymbolByFeatureID(jobID, featureID, organism, db, databaseConvertion
     except Exception as ex:
         return None, False
 
-def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatures, notMatchedFeatures, foundFeatures, matchedGeneIDsTablesList, matchedGeneSymbolsTablesList, featureEnrichment):
+def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatures, notMatchedFeatures, foundFeatures, matchedGeneIDsTablesList, matchedGeneSymbolsTablesList, enrichment):
     """
     This function is used to query the database in different threads.
 
@@ -133,7 +133,7 @@ def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatur
 
 
     #***********************************************************************************
-    #* STEP 2. GET THE CORRESPONDING DATABASE FOR CURRENT SPECIE
+    #* STEP 2. GET THE CORRESPONDING DATABASE FOR CURRENT SPECIES
     #***********************************************************************************
     databaseConvertion = getDatabasesByOrganismCode(organism)
 
@@ -142,6 +142,9 @@ def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatur
 
     gene_databases = databaseConvertion[0]
     symbol_databases = databaseConvertion[1]
+
+    # Use/Not use features to count the total number of items matched
+    featureEnrichment = (enrichment == "features")
 
     client, db  = getConnectionByOrganismCode(organism)
 
@@ -186,7 +189,7 @@ def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatur
                     if(found == True):
                         # matches+=1
                         # Increase the counter on the matching database, and keep track of the total
-                        # counting only once the features. In this scenario the feature does only have one omic value
+                        # counting only once the features. In this scenario the feature will only have one omic value
                         # containing the original name.
                         matches[databaseConvertion_name].add(feature.getOmicsValues()[0].getOriginalName() if featureEnrichment else feature.getName())
                         matches["Total"].add(feature.getOmicsValues()[0].getOriginalName() if featureEnrichment else feature.getName())
@@ -234,7 +237,7 @@ def mapFeatureIdentifiers(jobID, organism, databases, featureList, matchedFeatur
     finally:
         client.close()
 
-def mapFeatureNamesToKeggIDs(jobID, organism, databases, featureList, featureEnrichment, mapGeneIDs=True):
+def mapFeatureNamesToKeggIDs(jobID, organism, databases, featureList, enrichment, mapGeneIDs=True):
     """
     This function match the provided list of features
     to KEGG accepted feature ID (e.g. entrez gene ID for mmu)
@@ -290,7 +293,7 @@ def mapFeatureNamesToKeggIDs(jobID, organism, databases, featureList, featureEnr
         threadsList = []
         i=0
         for genesListPart in genesListParts:
-            thread = Process(target=mapFeatureIdentifiers, args=(jobID, organism, databases, genesListPart, matchedFeatures, notMatchedFeatures, foundFeatures, matchedGeneIDsTablesList, matchedGeneSymbolsTablesList, featureEnrichment))
+            thread = Process(target=mapFeatureIdentifiers, args=(jobID, organism, databases, genesListPart, matchedFeatures, notMatchedFeatures, foundFeatures, matchedGeneIDsTablesList, matchedGeneSymbolsTablesList, enrichment))
             threadsList.append(thread)
             thread.start()
             i+=1

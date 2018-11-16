@@ -122,7 +122,10 @@ class PathwayAcquisitionJob(Job):
             # Second position: considering total if it exists
             totalUnmapped = omicSummary[1]
 
-            mapped_ratios[genericOmic.get("omicName")] = float(totalMapped)/float(totalMapped + totalUnmapped)
+            try:
+                mapped_ratios[genericOmic.get("omicName")] = float(totalMapped)/float(totalMapped + totalUnmapped)
+            except ZeroDivisionError as e:
+                mapped_ratios[genericOmic.get("omicName")] = 0
 
         return mapped_ratios
 
@@ -165,6 +168,8 @@ class PathwayAcquisitionJob(Job):
         """
         valuesFileName= inputOmic.get("inputDataFile")
         relevantFileName= inputOmic.get("relevantFeaturesFile", "")
+        associationsFileName = inputOmic.get("associationsFile", "")
+        relevantAssociationsFileName = inputOmic.get("relevantAssociationsFile", "")
         omicName = inputOmic.get("omicName")
 
         if(inputOmic.get("isExample", False) == True):
@@ -172,6 +177,45 @@ class PathwayAcquisitionJob(Job):
         else:
             valuesFileName = self.getInputDir() + valuesFileName
             relevantFileName = self.getInputDir() + relevantFileName
+            associationsFileName = self.getInputDir() + associationsFileName
+            relevantAssociationsFileName = self.getInputDir() + relevantAssociationsFileName
+
+        #*************************************************************************
+        # STEP 1. VALIDATE THE ASSOCIATIONS AND RELEVANT ASSOCIATIONS FILES
+        #*************************************************************************
+        logging.info("VALIDATING ASSOCIATION FILE (" + omicName + ")..." )
+        if os_path.isfile(associationsFileName):
+            nLine = -1
+            with open(associationsFileName, 'rU') as associationDataFile:
+                for line in csv_reader(associationDataFile, delimiter="\t"):
+                    nLine = nLine + 1
+
+                    if (nLine > MAX_NUMBER_FEATURES):
+                        error += " - Errors detected while processing " + inputOmic.get("associationsFile", "") + \
+                                 ": The file exceeds the maximum number of features allowed (" + str(
+                            MAX_NUMBER_FEATURES) + ")." + "\n"
+                        break
+
+                    if len(line) != 2:
+                        error +=  " - Errors detected while processing " + inputOmic.get("associationsFile", "") + ": The file does not look like an associations file (some lines do not have 2 columns)." + "\n"
+                        break
+
+        logging.info("VALIDATING RELEVANT ASSOCIATION FILE (" + omicName + ")..." )
+        if os_path.isfile(relevantAssociationsFileName):
+            nLine = -1
+            with open(relevantAssociationsFileName, 'rU') as relevantAssociationDataFile:
+                for line in csv_reader(relevantAssociationDataFile, delimiter="\t"):
+                    nLine = nLine + 1
+
+                    if (nLine > MAX_NUMBER_FEATURES):
+                        error += " - Errors detected while processing " + inputOmic.get("relevantAssociationsFile", "") + \
+                                 ": The file exceeds the maximum number of features allowed (" + str(
+                            MAX_NUMBER_FEATURES) + ")." + "\n"
+                        break
+
+                    if len(line) != 2:
+                        error +=  " - Errors detected while processing " + inputOmic.get("relevantAssociationsFile", "") + ": The file does not look like a relevant associations file (some lines do not have 2 columns)." + "\n"
+                        break
 
         #*************************************************************************
         # STEP 1. VALIDATE THE RELEVANT FEATURES FILE
@@ -224,8 +268,8 @@ class PathwayAcquisitionJob(Job):
                     # STEP 2.2 CHECK IF IT EXCEEDS THE MAX NUMBER OF FEATURES ALLOWED
                     # *************************************************************************
                     if (nLine > MAX_NUMBER_FEATURES):
-                        error += " - Errors detected while processing " + inputOmic.get("inputDataFile",
-                                                                                        "") + ": The file exceeds the maximum number of features allowed (" + str(
+                        error += " - Errors detected while processing " + inputOmic.get("inputDataFile", "") + \
+                                 ": The file exceeds the maximum number of features allowed (" + str(
                             MAX_NUMBER_FEATURES) + ")." + "\n"
                         break
 
@@ -430,7 +474,7 @@ class PathwayAcquisitionJob(Job):
         pathwayIDsList = KeggInformationManager().getAllPathwaysByOrganism(self.getOrganism())
 
         #GET THE IDS FOR ALL PATHWAYS FOR CURRENT SPECIE
-        enrichmentByOmic = {x.get("omicName"): x.get("featureEnrichment", False) for x in self.getGeneBasedInputOmics() + self.getCompoundBasedInputOmics()}
+        enrichmentByOmic = {x.get("omicName"): x.get("enrichment", "genes") for x in self.getGeneBasedInputOmics() + self.getCompoundBasedInputOmics()}
 
         totalFeaturesByOmic, totalRelevantFeaturesByOmic = self.calculateTotalFeaturesByOmic(enrichmentByOmic)
         totalInputMatchedCompounds = len(self.getInputCompoundsData())
@@ -440,7 +484,7 @@ class PathwayAcquisitionJob(Job):
         mappedRatiosByOmic = self.getMappedRatios()
 
         #****************************************************************
-        # Step 2. FOR EACH PATHWAY OF THE SPECIE, CHECK IF THERE IS ONE OR
+        # Step 2. FOR EACH PATHWAY OF THE SPECIES, CHECK IF THERE IS ONE OR
         #         MORE FEATURES FROM THE INPUT (USING MULTITHREADING)
         #****************************************************************
         # try:
@@ -494,7 +538,7 @@ class PathwayAcquisitionJob(Job):
 
 
         if not isFinished:
-            raise Exception('Your data took too long to process and it was killed. Try it again later or upload smaller files if it persists.')
+            raise Exception('Your data took too long to process and it was killed. Try again later or upload smaller files if it persists.')
 
         self.setMatchedPathways(dict(matchedPathways))
         totalMatchedKeggPathways=len(self.getMatchedPathways())
@@ -540,16 +584,35 @@ class PathwayAcquisitionJob(Job):
         """
         totalFeaturesByOmic = Counter()
         totalRelevantFeaturesByOmic = Counter()
+        totalAssociationsByOmic = Counter()
+        totalRelevantAssociationsByOmic = Counter()
+
+        # Three enrichment methods available: gene, feature and association enrichment.
+        # By default use gene enrichment unless specified otherwise.
+        enrichments = {
+            'genes': lambda x: x.getInputName(),
+            'features': lambda x: x.getOriginalName(),
+            'associations': lambda x: ':::'.join([x.getInputName(), x.getOriginalName()])
+        }
 
         counterNames = defaultdict(lambda : defaultdict(bool))
+
         for features in self.getInputCompoundsData().values() + self.getInputGenesData().values():
             for omicValue in features.getOmicsValues():
-                # Two enrichment methods available: gene and feature enrichment.
-                # By default use gene enrichment unless specified otherwise.
-                if enrichmentByOmic[omicValue.getOmicName()] is True:
-                    counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] = (counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] or omicValue.isRelevant())
-                else:
-                    counterNames[omicValue.getOmicName()][omicValue.getInputName()] = (counterNames[omicValue.getOmicName()][omicValue.getInputName()] or omicValue.isRelevant())
+                # Select the appropriate enrichment property
+                enrichmentType = enrichmentByOmic[omicValue.getOmicName()]
+                enrichmentProperty = enrichments.get(enrichmentType)(omicValue).lower()
+
+                # Only for association enrichment type the relevant feature must come from the associations files.
+                relevantValue = omicValue.isRelevantAssociation() if enrichmentType == 'associations' else omicValue.isRelevant()
+
+                #
+                # if enrichmentByOmic[omicValue.getOmicName()] == 'features':
+                #     counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] = (counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] or omicValue.isRelevant())
+                # else:
+                #     counterNames[omicValue.getOmicName()][omicValue.getInputName()] = (counterNames[omicValue.getOmicName()][omicValue.getInputName()] or omicValue.isRelevant())
+
+                counterNames[omicValue.getOmicName()][enrichmentProperty] = (counterNames[omicValue.getOmicName()][enrichmentProperty] or relevantValue)
 
         for omicName, featuresNames in counterNames.iteritems():
             totalFeaturesByOmic[omicName] = len(featuresNames.keys())
@@ -574,8 +637,18 @@ class PathwayAcquisitionJob(Job):
         """
         isValidPathway = False
         pathwayInstance= Pathway("")
+
         # Keep track of the original names so as to only count them once, for both genes and compounds.
         counterNames = defaultdict(lambda : defaultdict(bool))
+
+        # Three enrichment methods available: gene, feature and association enrichment.
+        # By default use gene enrichment unless specified otherwise.
+        enrichments = {
+            'genes': lambda x: x.getInputName(),
+            'features': lambda x: x.getOriginalName(),
+            'associations': lambda x: ':::'.join([x.getInputName(), x.getOriginalName()])
+        }
+
         #TODO: RETURN AS A SET IN KEGG INFORMATION MANAGER
         genesInPathway=set([x.lower() for x in genesInPathway])
         for gene in inputGenes:
@@ -586,10 +659,18 @@ class PathwayAcquisitionJob(Job):
                     #SIGNIFICANCE-VALUES LIST STORES FOR EACH OMIC 3 VALUES: [TOTAL MATCHED, TOTAL RELEVANT, PVALUE]
                     #IN THIS LINE WE JUST ADD A NEW MATCH AND, IF RELEVANT, A NEW RELEVANT FEATURE, BUT KEEP PVALUE TO -1
                     #AS WE WILL CALCULATE IT LATER.
-                    if enrichmentByOmic[omicValue.getOmicName()] is True:
-                        counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] = (counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] or omicValue.isRelevant())
-                    else:
-                        counterNames[omicValue.getOmicName()][omicValue.getInputName()] = (counterNames[omicValue.getOmicName()][omicValue.getInputName()] or omicValue.isRelevant())
+                    enrichmentType = enrichmentByOmic[omicValue.getOmicName()]
+                    enrichmentProperty = enrichments.get(enrichmentType)(omicValue).lower()
+
+                    # Only for association enrichment type the relevant feature must come from the associations files.
+                    relevantValue = omicValue.isRelevantAssociation() if enrichmentType == 'associations' else omicValue.isRelevant()
+
+                    counterNames[omicValue.getOmicName()][enrichmentProperty] = (counterNames[omicValue.getOmicName()][enrichmentProperty] or relevantValue)
+                    #
+                    # if enrichmentByOmic[omicValue.getOmicName()] == 'features':
+                    #     counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] = (counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] or omicValue.isRelevant())
+                    # else:
+                    #     counterNames[omicValue.getOmicName()][omicValue.getInputName()] = (counterNames[omicValue.getOmicName()][omicValue.getInputName()] or omicValue.isRelevant())
 
         #First we get the list of IDs for the compounds that participate in the pathway
         compoundsInPathway=set([x.lower() for x in compoundsInPathway])
@@ -623,11 +704,15 @@ class PathwayAcquisitionJob(Job):
                 values = pathwayInstance.getSignificanceValues().get(omicName)
                 #FOR EACH OMIC TYPE, SIGNIFICANCE IS CALCULATED TAKING IN ACCOUNT, AND CONSIDERING ONLY THE ORIGINAL NAME:
                 #  - THE TOTAL NUMBER OF MATCHED FEATURES FOR CURRENT OMIC (i.e. IF WE INPUT PROTEINS, THE TOTAL NUMBER WILL BE
-                #    THE TOTAL OF PROTEINS THAT WE MANAGED TO MAP TO GENES.
+                #    THE TOTAL OF PROTEINS THAT WE MANAGED TO MAP TO GENES).
                 #  - THE TOTAL NUMBER OF RELEVANT FEATURES FOR THE CURRENT OMIC
                 #  - THE TOTAL FOUND FEATURES FOR CURRENT PATHWAY
                 #  - THE TOTAL RELEVANT FEATURES FOR CURRENT PATHWAY
-                pValue = calculateSignificance(self.getTest(), totalFeaturesByOmic.get(omicName,0),totalRelevantFeaturesByOmic.get(omicName,0), values[0], values[1])
+                pValue = calculateSignificance(self.getTest(),
+                                               totalFeaturesByOmic.get(omicName,0),
+                                               totalRelevantFeaturesByOmic.get(omicName,0),
+                                               values[0],
+                                               values[1])
                 pathwayInstance.setSignificancePvalue(omicName, pValue)
 
             #SIGNIFICANCE VALUES PER OMIC in format OmicName -> [totalFeatures, totalRelevantFeatures, pValue]

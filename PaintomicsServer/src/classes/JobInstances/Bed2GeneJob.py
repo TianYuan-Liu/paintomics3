@@ -51,7 +51,7 @@ class Bed2GeneJob(Job):
         self.rules                = ["TSS","1st_EXON","PROMOTER","INTRON","GENE_BODY","UPSTREAM","DOWNSTREAM"]
         self.geneIDtag            = "gene_id"
         self.ignoreMissing        = True
-        self.featureEnrichment    = False
+        self.enrichment           = "genes"
 
         self.summarizationMethod  = "mean"
         self.reportRegions        = ["all"]

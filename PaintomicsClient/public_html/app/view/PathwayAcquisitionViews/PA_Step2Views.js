@@ -285,7 +285,7 @@ function PA_Step2JobView() {
 		this.controller.step2OnFormSubmitHandler(this);
 	};
 	this.backButtonHandler = function() {
-		this.controller.backButtonClickHandler(this);
+		this.controller.backButtonClickHandler(this, update=true);
 	};
 	this.resetViewHandler = function() {
 		this.controller.resetButtonClickHandler(this);

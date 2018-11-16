@@ -2805,9 +2805,9 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 			var me = this;
 			var componentID = "#" + this.getComponent().getId();
 
-			/****************************************************************/
-			/* STEP 1. Update the name of the pathway and the classificatio */
-			/****************************************************************/
+			/*****************************************************************/
+			/* STEP 1. Update the name of the pathway and the classification */
+			/*****************************************************************/
 			$(componentID + " .pathwayNameLabel h4").text(this.getModel().getName());
 			$(componentID + " .pathwayClassificationLabel").html(
 				"<b>Classification:</b>"+
@@ -2821,7 +2821,8 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 				if(this.getParent().getName() !== "PA_Step3PathwayNetworkTooltipView"){
 					var htmlCode = '<tbody><tr><th></th><th>Matched<br>features</th><th>p-value</th></tr>';
 					var significanceValues = this.getModel().getSignificanceValues();
-					var foundFeatures = this.getParent("PA_Step4PathwayView").getMatchedFeatures();
+					var PA4View = this.getParent("PA_Step4PathwayView");
+					var foundFeatures = (PA4View !== null) ? PA4View.getMatchedFeatures() : {};
 					var renderedValue;
 					for (var i in significanceValues) {
 						renderedValue = (significanceValues[i][2] > 0.001 || significanceValues[i][2] === 0) ? parseFloat(significanceValues[i][2]).toFixed(6) : parseFloat(significanceValues[i][2]).toExponential(4);
@@ -2837,15 +2838,29 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 						if (! Ext.Object.isEmpty(foundFeatures[omicName])) {					
 							// Sort alphabetically
 							var omicFeatures = foundFeatures[omicName];
+							
 							var sortKeys = Object.keys(omicFeatures);
 							sortKeys.sort();
+
+							var relevantTags = function(feature) {
+								var tmpHTML = '';
+
+								if (omicFeatures[feature].isRelevant) {
+									tmpHTML += '<i class="featureNameLabelRelevant relevantFeature" title="Relevant feature"></i>';
+								}
+	
+								if (omicFeatures[feature].isRelevantAssociation) {
+									tmpHTML += '<i class="featureNameLabelRelevant relevantAssociationFeature" title="Relevant association"></i>';
+								}
+
+								return(tmpHTML);
+							};
 							
 							detailedHTMLcode += '<ul>';
 							
 							sortKeys.forEach(function(feature) {
 								detailedHTMLcode += '<li>' + feature + ' (' + Array.from(new Set(omicFeatures[feature].inputNames)).join(', ') + ')' +
-									(omicFeatures[feature].isRelevant ? '<i class="featureNameLabelRelevant relevantFeature" title="Relevant feature"></i>' : '') +
-									'</li>';
+									relevantTags(feature) + '</li>';
 							});
 							
 							detailedHTMLcode += '</ul></div>';
@@ -2853,7 +2868,6 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 					});
 					
 					$(componentID + " .pathwaySummaryTable").append(detailedHTMLcode);
-					
 					
 					$('i.expandMatched').click(function() {
 						var el = $(this);
@@ -2966,6 +2980,11 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 					xAxisCat.push("Timepoint " + (i + 1));
 				}
 
+				var replaceSymbols = {
+					"*": '<i class="relevantFeature"></i>',
+					"^": '<i class="relevantAssociationFeature"></i>'
+				};
+
 				var heatmap = new Highcharts.Chart({
 					chart: {type: 'heatmap', renderTo: targetID},
 					title: null, legend: {enabled: false}, credits: {enabled: false},
@@ -2974,7 +2993,7 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 						formatter: function () {
 							var title = this.point.series.name.split("#");
 							title[1] = (title.length > 1) ? title[1] : "";
-							return "<b>" + title[0].replace("*", '<i class="relevantFeature"></i>') + "</b><br/>" + "<i class='tooltipInputName'>" + title[1] + "</i>" + (this.point.value === null ? "No data" : this.point.value);
+							return "<b>" + title[0].replace(/[\*\^]/g, function(c) { return replaceSymbols[c]; }) + "</b><br/>" + "<i class='tooltipInputName'>" + title[1] + "</i>" + (this.point.value === null ? "No data" : this.point.value);
 						},
 						useHTML: true
 					},
@@ -2985,7 +3004,7 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 							formatter: function () {
 								var title = this.value.split("#");
 								title[1] = (title.length > 1) ? title[1] : "No data";
-								return '<span style="width: 55px;display: block;   text-align: right;">' + ((title[0].length > 14) ? title[0].substring(0, 14) + "..." : title[0]).replace("*", '<i class="relevantFeature"></i>') +
+								return '<span style="width: 55px;display: block;   text-align: right;">' + ((title[0].length > 14) ? title[0].substring(0, 14) + "..." : title[0]).replace(/[\*\^]/g, function(c) { return replaceSymbols[c]; }) +
 								'</br><i class="tooltipInputName yAxisLabel">' + ((title[1].length > 14) ? title[1].substring(0, 14) + "..." : title[1]) + '</i></span>';
 							},
 							style: {fontSize: "9px"}, useHTML: true

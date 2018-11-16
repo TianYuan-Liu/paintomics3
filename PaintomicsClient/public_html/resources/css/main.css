@@ -1111,6 +1111,12 @@ i.relevantFeature:before {
 	color: red;
 	padding-left: 8px;
 }
+i.relevantAssociationFeature:before {
+	content: "\f005";
+	font: normal normal normal 9px/1 FontAwesome;
+	color: #f4c800;
+	padding-left: 8px;
+}
 .x-tab {
 	background: none;
 }

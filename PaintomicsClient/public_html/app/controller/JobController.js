@@ -438,7 +438,7 @@ function JobController() {
 					showSuccessMessage("Done", {logMessage: "Pathway information retrieved successfully", closeTimeout: 0.4});
 					me.showJobInstance(jobModel, {stepNumber: 4}).showPathwayView(pathwayID);
 				},
-				failure: ajaxErrorHandler
+				error: ajaxErrorHandler
 			});
 		} else {
 			me.showJobInstance(jobModel, {stepNumber: 4}).showPathwayView(pathwayID);
@@ -827,7 +827,7 @@ function JobController() {
 	* @param {type} jobView
 	* @returns {undefined}
 	*/
-	this.backButtonClickHandler = function (jobView) {
+	this.backButtonClickHandler = function (jobView, update=false) {
 		var jobModel = jobView.getModel();
 		var me = this;
 		if (jobModel.getStepNumber() > 1) {
@@ -835,7 +835,7 @@ function JobController() {
 				callback: function () {
 					jobModel.setStepNumber(jobModel.getStepNumber() - 1);
 					me.updateStoredApplicationData("jobModel", jobModel);
-					me.showJobInstance(jobModel, {doUpdate: false});
+					me.showJobInstance(jobModel, {doUpdate: update});
 					//                    showSuccessMessage("Done", {logMessage: "Getting Job information..."});
 				}, closeTimeout: 1, showSpin: true
 			});
@@ -1029,7 +1029,12 @@ function JobController() {
 					}
 					return value; // returning undefined omits the key from being serialized
 				};
-				sessionStorage.setItem(key, JSON.stringify(data, replacerFn));
+				try  {
+					sessionStorage.setItem(key, JSON.stringify(data, replacerFn));
+				}
+				catch (err) {
+					showErrorMessage("Too much data", "The data to put in local storage exceeded the browser quota. Please, try to reload the job and if this problem persists contact with us. Thank you.");
+				}
 			}
 		}
 	};
