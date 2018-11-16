@@ -122,7 +122,10 @@ class PathwayAcquisitionJob(Job):
             # Second position: considering total if it exists
             totalUnmapped = omicSummary[1]
 
-            mapped_ratios[genericOmic.get("omicName")] = float(totalMapped)/float(totalMapped + totalUnmapped)
+            try:
+                mapped_ratios[genericOmic.get("omicName")] = float(totalMapped)/float(totalMapped + totalUnmapped)
+            except ZeroDivisionError as e:
+                mapped_ratios[genericOmic.get("omicName")] = 0
 
         return mapped_ratios
 
@@ -544,12 +547,20 @@ class PathwayAcquisitionJob(Job):
         counterNames = defaultdict(lambda : defaultdict(bool))
         for features in self.getInputCompoundsData().values() + self.getInputGenesData().values():
             for omicValue in features.getOmicsValues():
-                # Two enrichment methods available: gene and feature enrichment.
-                # By default use gene enrichment unless specified otherwise.
-                if enrichmentByOmic[omicValue.getOmicName()] is True:
-                    counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] = (counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] or omicValue.isRelevant())
-                else:
-                    counterNames[omicValue.getOmicName()][omicValue.getInputName()] = (counterNames[omicValue.getOmicName()][omicValue.getInputName()] or omicValue.isRelevant())
+                # Select the appropriate enrichment property
+                enrichmentType = enrichmentByOmic[omicValue.getOmicName()]
+                enrichmentProperty = enrichments.get(enrichmentType)(omicValue).lower()
+
+                # Only for association enrichment type the relevant feature must come from the associations files.
+                relevantValue = omicValue.isRelevantAssociation() if enrichmentType == 'associations' else omicValue.isRelevant()
+
+                #
+                # if enrichmentByOmic[omicValue.getOmicName()] == 'features':
+                #     counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] = (counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] or omicValue.isRelevant())
+                # else:
+                #     counterNames[omicValue.getOmicName()][omicValue.getInputName()] = (counterNames[omicValue.getOmicName()][omicValue.getInputName()] or omicValue.isRelevant())
+
+                counterNames[omicValue.getOmicName()][enrichmentProperty] = (counterNames[omicValue.getOmicName()][enrichmentProperty] or relevantValue)
 
         for omicName, featuresNames in counterNames.iteritems():
             totalFeaturesByOmic[omicName] = len(featuresNames.keys())
@@ -623,7 +634,7 @@ class PathwayAcquisitionJob(Job):
                 values = pathwayInstance.getSignificanceValues().get(omicName)
                 #FOR EACH OMIC TYPE, SIGNIFICANCE IS CALCULATED TAKING IN ACCOUNT, AND CONSIDERING ONLY THE ORIGINAL NAME:
                 #  - THE TOTAL NUMBER OF MATCHED FEATURES FOR CURRENT OMIC (i.e. IF WE INPUT PROTEINS, THE TOTAL NUMBER WILL BE
-                #    THE TOTAL OF PROTEINS THAT WE MANAGED TO MAP TO GENES.
+                #    THE TOTAL OF PROTEINS THAT WE MANAGED TO MAP TO GENES).
                 #  - THE TOTAL NUMBER OF RELEVANT FEATURES FOR THE CURRENT OMIC
                 #  - THE TOTAL FOUND FEATURES FOR CURRENT PATHWAY
                 #  - THE TOTAL RELEVANT FEATURES FOR CURRENT PATHWAY
