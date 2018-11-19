@@ -52,8 +52,12 @@ def adjustPvalues(pvaluesList):
 
 
 def calculateStoufferCombinedPvalue(pvalues, weights):
+    # Stouffer method cannot deal with p-values equal to 1, returning Nan
+    # Prevent that by removing a small value in those cases
+    curatedPvalues = [min(pvalue[2], 0.9999999999) if type(pvalue) is list else min(pvalue, 0.9999999999) for pvalue in pvalues]
+
     # P-value in third position ([nFeatures, nRelevantFeatures, pValue])
-    combinedPvalue = combine_pvalues([pvalue[2] if type(pvalue) is list else pvalue for pvalue in pvalues], 'stouffer', weights)
+    combinedPvalue = combine_pvalues(curatedPvalues, 'stouffer', weights)
 
     return combinedPvalue[1]
 

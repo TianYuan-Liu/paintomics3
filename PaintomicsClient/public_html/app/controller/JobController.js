@@ -526,9 +526,12 @@ function JobController() {
                 	pathwayTableView.updatePvaluesFromStore();
 				}                
             },
-            error: function() {
-				//ajaxErrorHandler
-				console.log(error)
+            error: function(response) {
+				if (response.success) {
+					response.responseText = "Error parsing the JSON output";
+				}
+
+				ajaxErrorHandler(response);
 			}
         });
         

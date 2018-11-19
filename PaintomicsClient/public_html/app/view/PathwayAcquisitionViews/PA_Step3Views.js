@@ -2838,7 +2838,7 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 						if (! Ext.Object.isEmpty(foundFeatures[omicName])) {					
 							// Sort alphabetically
 							var omicFeatures = foundFeatures[omicName];
-							
+
 							var sortKeys = Object.keys(omicFeatures);
 							sortKeys.sort();
 
@@ -3869,96 +3869,99 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 									
 										me.component.query("[id=configureButton]")[0].setDisabled(! isStouffer);
 								},
-                                'clickConfigure': function(iconLink) {                            
-                                    // Retrieve the default weights used (mapped ratio)
-									var mappingInfo = me.getModel().getMappingSummary();
-									var defaultValues = {};
+                                'clickConfigure': function(iconLink) {        
 									
-									// Calculate the original mapping ratio used as Stouffer weight.  
-									Object.keys(mappingInfo).map(function(omic) {
-										defaultValues[omic] = parseFloat((mappingInfo[omic].mapped / (mappingInfo[omic].mapped + mappingInfo[omic].unmapped)).toFixed(1)) * 10
-									});
-                                    
-									// Create an slider for each omic
-                                    var omicSliders = me.getModel().getOmicNames().map(function(omic) {    										
-                                        return({
-                                            xtype: 'slider',
-                                            fieldLabel: omic,
-                                            minValue: 0,
-                                            maxValue: 10,
-                                            increment: 1,
-                                            value: me.getParent().getVisualOptions().stoufferWeights[omic] || defaultValues[omic],
-                                            width: '100%'
-                                        })
-                                    });
-                                    
-                                    Ext.create('Ext.tip.Tip', {
-                                        closable: true,
-                                        //padding: '0 0 0 0',
-                                        maxWidth: 200,
-                                        width: 200,
-                                        itemId: 'stoufferTip',
-                                        renderTo: "mainViewCenterPanel",
-                                        items: [
-                                            {
-                                                xtype: 'container',
-                                                layout: 'vbox',
-                                                align: 'center',
-                                                flex: 1,
-	                                            items: omicSliders.concat({
+									if (me.tipComponent == null) {
+										// Retrieve the default weights used (mapped ratio)
+										var mappingInfo = me.getModel().getMappingSummary();
+										var customStouffers = me.getParent().getVisualOptions().stoufferWeights;
+										var defaultValues = {};
+										
+										// Calculate the original mapping ratio used as Stouffer weight.  
+										Object.keys(mappingInfo).map(function(omic) {
+											defaultValues[omic] = parseFloat((mappingInfo[omic].mapped / (mappingInfo[omic].mapped + mappingInfo[omic].unmapped)).toFixed(1)) * 10
+										});
+										
+										// Create an slider for each omic
+										var omicSliders = me.getModel().getOmicNames().map(function(omic) {    										
+											return({
+												xtype: 'slider',
+												fieldLabel: omic,
+												minValue: 0,
+												maxValue: 10,
+												increment: 1,
+												value: (customStouffers != undefined) ? customStouffers[omic] : defaultValues[omic],
+												width: '100%'
+											})
+										});
+										
+										me.tipComponent = Ext.create('Ext.tip.Tip', {
+											closable: true,
+											maxWidth: 200,
+											width: 200,
+											itemId: 'stoufferTip',
+											renderTo: "mainViewCenterPanel",
+											items: [
+												{
 													xtype: 'container',
-													layout: {
-														type: 'hbox',
-														align: 'middle'
-													},
+													layout: 'vbox',
+													align: 'center',
 													flex: 1,
-													items: [
-														{
-															xtype: 'button',
-															text: 'Apply',
-															margin: '10 5 10 10',
-															width: 80,
-															//cls: 'button btn-success btn-right',
-															handler: function() {
-																var tip = Ext.ComponentQuery.query("[itemId=stoufferTip]")[0];
-																var sliders = tip.query("slider");
-																var stoufferWeigths = {};
-																var currentPValues = me.getPvaluesFromStore(true);
-																var visiblePathways = Object.keys(me.getAssociatedPathways(true));
-
-																sliders.forEach(function(omicSlider) {
-																	stoufferWeigths[omicSlider.getFieldLabel()] = parseFloat(omicSlider.getValue());
-																});
-
-																me.getParent().setVisualOptions("stoufferWeights", stoufferWeigths);
-																
-																me.getParent().getController().updateStoredApplicationData("visualOptions", me.getParent().getVisualOptions());
-																/*me.getParent().getController().updateStoredVisualOptions(me.getParent().getModel().getJobID(), 
-																														 me.getParent().getVisualOptions());*/
-																
-																me.getParent().getController().step3GetUpdatedPvalues(me, currentPValues, stoufferWeigths, visiblePathways); 
-																
-																tip.close();
-															}
+													items: omicSliders.concat({
+														xtype: 'container',
+														layout: {
+															type: 'hbox',
+															align: 'middle'
 														},
-														{
-															xtype: 'button',
-															text: 'Defaults',
-															width: 80,
-															margin: '10 10 10 5',
-															handler: function() {
-																var sliders = Ext.ComponentQuery.query("[itemId=stoufferTip]")[0].query("slider");
-																
-																sliders.forEach(function(omicSlider) {
-																	omicSlider.setValue(defaultValues[omicSlider.getFieldLabel()]);
-																});
+														flex: 1,
+														items: [
+															{
+																xtype: 'button',
+																text: 'Apply',
+																margin: '10 5 10 10',
+																width: 80,
+																//cls: 'button btn-success btn-right',
+																handler: function() {
+																	var tip = Ext.ComponentQuery.query("[itemId=stoufferTip]")[0];
+																	var sliders = tip.query("slider");
+																	var stoufferWeigths = {};
+																	var currentPValues = me.getPvaluesFromStore(true);
+																	var visiblePathways = Object.keys(me.getAssociatedPathways(true));
+
+																	sliders.forEach(function(omicSlider) {
+																		stoufferWeigths[omicSlider.getFieldLabel()] = parseFloat(omicSlider.getValue());
+																	});
+
+																	me.getParent().setVisualOptions("stoufferWeights", stoufferWeigths);
+																	
+																	me.getParent().getController().updateStoredApplicationData("visualOptions", me.getParent().getVisualOptions());
+																	
+																	me.getParent().getController().step3GetUpdatedPvalues(me, currentPValues, stoufferWeigths, visiblePathways); 
+																	
+																	tip.close();
+																}
+															},
+															{
+																xtype: 'button',
+																text: 'Defaults',
+																width: 80,
+																margin: '10 10 10 5',
+																handler: function() {
+																	var sliders = Ext.ComponentQuery.query("[itemId=stoufferTip]")[0].query("slider");
+																	
+																	sliders.forEach(function(omicSlider) {
+																		omicSlider.setValue(defaultValues[omicSlider.getFieldLabel()]);
+																	});
+																}
 															}
-														}
-													]
-												})
-                                            }
-                                        ]
-                                    }).showBy(iconLink, "b-t", [0, 20]);
+														]
+													})
+												}
+											]
+										});
+									}
+									
+									me.tipComponent.showBy(iconLink, "b-t", [0, 20]);
                                 }
 							}
 						}]
