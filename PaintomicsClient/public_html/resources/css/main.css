@@ -401,6 +401,10 @@ div.contentbox h2, div.contentbox h3, #clusternumber_box h2 {
 	padding: 6px;
 	margin: 0;
 }
+div.contentbox h3 span {
+	font-size: small;
+	padding-left: 10px;
+}
 div.contentbox p, div.contentbox li {
 	padding: 2px 5px;
 	text-align: justify;
