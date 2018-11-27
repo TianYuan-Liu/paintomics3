@@ -3788,10 +3788,18 @@ function PA_Step4DetailsView() {
 			"^": '<i class="relevantAssociationFeature"></i>'
 		};
 
+		var clusterize = omicsValues.length > 5 ? {
+			algorithm: "hierarchical",
+			distance: "euclidean",
+			linkage: "complete",
+			dendogram: false 
+		} : false;
+
 		var heatmap = new Highcharts.Chart({
 			chart: {type: 'heatmap', renderTo: targetID},
 			heatmapSelector: {color: '#000', lineWidth: 3},
 			title: null, legend: {enabled: false}, credits: {enabled: false},
+			clusterize: clusterize,
 			tooltip: {
 				borderColor: "#333",
 				formatter: function () {
