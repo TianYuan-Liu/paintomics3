@@ -3195,7 +3195,7 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 
 				var significativePathways = 0;
 				/*
-					Currently browsers have a limit on the amount of space available for
+					Current browsers have a limit on the amount of space available for
 					sessionStorage. In jobs with multiple omics the "omicsValue" property can
 					be large enough to produce a JSON string too big to be saved.
 					
@@ -3464,7 +3464,8 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 							var db = grid.getStore().getAt(rowIndex).get('source');
 							var db_link = {
 								"KEGG": "http://www.genome.jp/dbget-bin/www_bget?pathway+%term%",
-								"MapMan": "http://www.gomapman.org/search/gmm/%term%?entity=pathway"
+								"MapMan": "http://www.gomapman.org/search/gmm/%term%?entity=pathway",
+								"Reactome": "https://reactome.org/content/query?q=%term%"
 							};
 
 							window.open(db_link[db].replace("%term%", term), '_blank');
@@ -3632,34 +3633,38 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 					if (adjustedPvalueMethods !== null) {
 						filteredRecords.each(function(storeRecord) {
 							var pathwayID = storeRecord.raw.pathwayID;
+							var dbID = storeRecord.raw.source;
 
-							/* Iterate over all adjusted columns (omics and combined p-values methods) */
-							omicNames.concat(combinedPvaluesMethods).forEach(function(adjustedColumn) {
-								var keyField;
+							/* Skip record if it is from another DB */
+							if (dbID == db) {
+								/* Iterate over all adjusted columns (omics and combined p-values methods) */
+								omicNames.concat(combinedPvaluesMethods).forEach(function(adjustedColumn) {
+									var keyField;
 
-								/* Set the correct name for the rowModel */
-								if (combinedPvaluesMethods.indexOf(adjustedColumn) != -1) {
-									keyField = "adjustedCombinedSignificancePvalue" + adjustedColumn + "%fdrterm%";
-								} else {
-									keyField = "adjpval%fdrterm%-" + adjustedColumn.toLowerCase().replace(/ /g, "-");
-								}
-
-								/* Iterate over multiple test adjustment methods */
-								adjustedPvalueMethods.forEach(function(fdrMethod) {
-									var rowModelKey = keyField.replace("%fdrterm%", fdrMethod);
-									var newPvalue;
-
-									/* 	If the column is present, it must contain all the adjustment methods but not necessarily
-										all the pathways, as not all omics match in all pathways. */
-									if ( ! restoreRawAdjusted && visualOptions[db].adjustedPvalues[adjustedColumn]) {
-										newPvalue = visualOptions[db].adjustedPvalues[adjustedColumn][fdrMethod][pathwayID] || "-";
+									/* Set the correct name for the rowModel */
+									if (combinedPvaluesMethods.indexOf(adjustedColumn) != -1) {
+										keyField = "adjustedCombinedSignificancePvalue" + adjustedColumn + "%fdrterm%";
 									} else {
-										newPvalue = storeRecord.raw[rowModelKey];
+										keyField = "adjpval%fdrterm%-" + adjustedColumn.toLowerCase().replace(/ /g, "-");
 									}
 
-									storeRecord.set(rowModelKey, newPvalue);
+									/* Iterate over multiple test adjustment methods */
+									adjustedPvalueMethods.forEach(function(fdrMethod) {
+										var rowModelKey = keyField.replace("%fdrterm%", fdrMethod);
+										var newPvalue;
+
+										/* 	If the column is present, it must contain all the adjustment methods but not necessarily
+											all the pathways, as not all omics match in all pathways. */
+										if ( ! restoreRawAdjusted && visualOptions[db].adjustedPvalues[adjustedColumn]) {
+											newPvalue = visualOptions[db].adjustedPvalues[adjustedColumn][fdrMethod][pathwayID] || "-";
+										} else {
+											newPvalue = storeRecord.raw[rowModelKey];
+										}
+
+										storeRecord.set(rowModelKey, newPvalue);
+									});
 								});
-							});
+							}
 						});
 					}
 				});
@@ -3739,8 +3744,18 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 					}
 
 					try {
-						var totalFeatures = me.model.summary[4][metadata.column.text.replace(/<\/br>/g, " ")] || 0;
-						var totalRelevant = me.model.summary[5][metadata.column.text.replace(/<\/br>/g, " ")] || 0;
+						var sourceDB = record.get("source");
+						var totalFeatures, totalRelevant;
+
+						// Keep compatibility with old jobs
+						if (me.model.summary[4].hasOwnProperty(sourceDB)) {
+							totalFeatures = me.model.summary[4][sourceDB][metadata.column.text.replace(/<\/br>/g, " ")] || 0;
+							totalRelevant = me.model.summary[5][sourceDB][metadata.column.text.replace(/<\/br>/g, " ")] || 0;
+						} else {
+							totalFeatures = me.model.summary[4][metadata.column.text.replace(/<\/br>/g, " ")] || 0;
+							totalRelevant = me.model.summary[5][metadata.column.text.replace(/<\/br>/g, " ")] || 0;
+						}
+
 						var foundFeatures = record.get('totalMatched' + omicName);
 						var foundRelevant = record.get('totalRelevantMatched' + omicName);
 
