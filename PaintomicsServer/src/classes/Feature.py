@@ -72,7 +72,7 @@ class Feature(Model):
     def setMatchingDB(self, matchingDB):
         self.matchingDB = matchingDB
     def getMatchingDB(self):
-        return self.matchingDB
+        return self.matchingDB if self.matchingDB != '' else 'KEGG'
 
     #******************************************************************************************************************
     # OTHER FUNCTIONS
