@@ -70,6 +70,28 @@ class KeggInformationManager():
         finally:
                 self.lock.release() #UNLOCK CACHE
 
+
+    def findBatchInTranslationCache(self, jobID, featureIDs, type="id", dbID = "global"):
+        """
+        This function...
+
+        @param {type}
+        @return {type}
+        """
+        try:
+            self.lock.acquire() #LOCK CACHE
+
+            if self.translationCache.get(jobID) == None:
+                return None
+
+            selectedDict = self.translationCache.get(jobID)[dbID][type]
+
+            return {featureID: selectedDict.get(featureID) for featureID in featureIDs if featureID in selectedDict.keys()}
+        except Exception as ex:
+            raise ex
+        finally:
+            self.lock.release() #UNLOCK CACHE
+
     def updateTranslationCache(self, jobID, newDataTable, type="id", dbID = "global"):
         """
         This function...
@@ -81,7 +103,8 @@ class KeggInformationManager():
             self.lock.acquire() #LOCK CACHE
 
             if self.translationCache.get(jobID) != None:
-                self.translationCache.get(jobID)[dbID][type] = dict(self.translationCache.get(jobID)[dbID][type].items() + newDataTable.items())
+                # self.translationCache.get(jobID)[dbID][type] = dict(self.translationCache.get(jobID)[dbID][type].items() + newDataTable.items())
+                self.translationCache.get(jobID)[dbID][type] = {**self.translationCache.get(jobID)[dbID][type], **newDataTable}
             return True
         except Exception as ex:
                 raise ex
@@ -115,7 +138,7 @@ class KeggInformationManager():
     # |_|  /_/    \_\|_|   |_|  |_|    \/  \//_/    \_\|_|  |_____/
     #*************************************************************************************
     def getAllPathwaysByOrganism(self, organism):
-        return self.getKeggData(organism).get("pathways").keys()
+        return self.getKeggData(organism).get("pathways")
 
     def getPathwayInformation(self, organism, pathwayID):
         raise NotImplementedError("Not implemented")
@@ -252,7 +275,7 @@ class KeggInformationManager():
         try:
             organismData = {
                 "name"    : organism,
-                "pathways": {}
+                "pathways": defaultdict(dict)
             }
             #GET THE KEGG DATA FOR THE GIVEN ORGANISM FROM DATABASE
             cursor=db.kegg.find()
