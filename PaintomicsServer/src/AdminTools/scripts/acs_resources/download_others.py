@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import traceback
 from sys import argv, stderr
@@ -42,7 +42,7 @@ try:
 
 
 except Exception as ex:
-    stderr.write("FAILED WHILE DOWNLOADING DATA " + ex.message)
+    stderr.write("FAILED WHILE DOWNLOADING DATA " + str(ex))
     traceback.print_exc(file=stderr)
     exit(1)
 

@@ -28,7 +28,7 @@ def processEnsemblData():
         exit(1)
 
     #Get line count (for percentage)
-    total_lines = int(COMMON_BUILD_DB_TOOLS.check_output(['wc', '-l', file_name]).split(" ")[0])
+    total_lines = int(COMMON_BUILD_DB_TOOLS.check_output(['wc', '-l', file_name]).decode('utf-8').split(" ")[0])
 
     #Register databases and get the assigned IDs
     ensembl_transcript_db_id = COMMON_BUILD_DB_TOOLS.insertDatabase(COMMON_BUILD_DB_TOOLS.DBNAME_Entry("ensembl_transcript", "Ensembl transcript", "Identifier"))
@@ -50,9 +50,11 @@ def processEnsemblData():
             prev = COMMON_BUILD_DB_TOOLS.showPercentage(i, total_lines, prev, errorMessage)
             try:
                 ensembl_gi = row[0]
-                msu_locus = row[1]
-                ensembl_pi = row[2]
-                ensembl_ti = row[3]
+                # msu_locus = row[1]
+                # ensembl_pi = row[2]
+                # ensembl_ti = row[3]
+                ensembl_pi = row[1]
+                ensembl_ti = row[2]
 
                 if ensembl_ti == "": #ALWAYS FALSE
                     raise Exception("Empty ENSEMBL transcript value.")
@@ -64,19 +66,19 @@ def processEnsemblData():
                     ensembl_gi = COMMON_BUILD_DB_TOOLS.insertXREF(COMMON_BUILD_DB_TOOLS.XREF_Entry(ensembl_gi, ensembl_gene_db_id, resource.get("description")))
                     COMMON_BUILD_DB_TOOLS.insertTR_XREF(ensembl_gi, ensembl_ti)
 
-                if msu_locus != "":
-                    msu_locus_id = COMMON_BUILD_DB_TOOLS.insertXREF(COMMON_BUILD_DB_TOOLS.XREF_Entry(msu_locus, msu_locus_db_id, resource.get("description")))
-                    COMMON_BUILD_DB_TOOLS.insertTR_XREF(msu_locus_id, ensembl_ti)
-                    #Add the gene id (locus without the .1, .2, etc.)
-                    msu_locus_id = COMMON_BUILD_DB_TOOLS.insertXREF(COMMON_BUILD_DB_TOOLS.XREF_Entry(msu_locus.split(".")[0], msu_geneid_db_id, resource.get("description")))
-                    COMMON_BUILD_DB_TOOLS.insertTR_XREF(msu_locus_id, ensembl_ti)
+                # if msu_locus != "":
+                    # msu_locus_id = COMMON_BUILD_DB_TOOLS.insertXREF(COMMON_BUILD_DB_TOOLS.XREF_Entry(msu_locus, msu_locus_db_id, resource.get("description")))
+                    # COMMON_BUILD_DB_TOOLS.insertTR_XREF(msu_locus_id, ensembl_ti)
+                    # #Add the gene id (locus without the .1, .2, etc.)
+                    # msu_locus_id = COMMON_BUILD_DB_TOOLS.insertXREF(COMMON_BUILD_DB_TOOLS.XREF_Entry(msu_locus.split(".")[0], msu_geneid_db_id, resource.get("description")))
+                    # COMMON_BUILD_DB_TOOLS.insertTR_XREF(msu_locus_id, ensembl_ti)
 
                 if ensembl_pi != "":
                     ensembl_pi = COMMON_BUILD_DB_TOOLS.insertXREF(COMMON_BUILD_DB_TOOLS.XREF_Entry(ensembl_pi, ensembl_peptide_db_id, resource.get("description")))
                     COMMON_BUILD_DB_TOOLS.insertTR_XREF(ensembl_pi, ensembl_ti)
 
             except Exception as ex:
-                errorMessage = "FAILED WHILE PROCESSING ENSEMBL MAPPING FILE [line " + str(i) + "]: "+ ex.message
+                errorMessage = "FAILED WHILE PROCESSING ENSEMBL MAPPING FILE [line " + str(i) + "]: "+ str(ex)
                 COMMON_BUILD_DB_TOOLS.FAILED_LINES["ENSEMBL"].append([errorMessage] + row)
     csvfile.close()
 
@@ -96,10 +98,10 @@ ROOT_DIR    = argv[2].rstrip("/") + "/"      #Should be src/AdminTools
 DATA_DIR    = argv[3].rstrip("/") + "/"
 LOG_FILE    = argv[4]
 
-print SPECIE
-print ROOT_DIR
-print DATA_DIR
-print LOG_FILE
+print(SPECIE)
+print(ROOT_DIR)
+print(DATA_DIR)
+print(LOG_FILE)
 
 COMMON_BUILD_DB_TOOLS = imp.load_source('common_build_database', ROOT_DIR + "scripts/common_build_database.py")
 COMMON_BUILD_DB_TOOLS.SPECIE= SPECIE
@@ -130,11 +132,11 @@ try:
     COMMON_BUILD_DB_TOOLS.createDatabase()
 
 except CalledProcessError as ex:
-    stderr.write("FAILED WHILE PROCESSING DATA " + ex.message)
+    stderr.write("FAILED WHILE PROCESSING DATA " + str(ex))
     traceback.print_exc(file=stderr)
     exit(1)
 except Exception as ex:
-    stderr.write("FAILED WHILE PROCESSING DATA " + ex.message)
+    stderr.write("FAILED WHILE PROCESSING DATA " + str(ex))
     traceback.print_exc(file=stderr)
     exit(1)
 

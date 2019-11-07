@@ -28,7 +28,7 @@ class VisualOptionsDAO(DAO):
 
     def insert(self, instance, otherParams=None):
         fileInstance = instance
-        if(otherParams == None or not otherParams.has_key("jobID")):
+        if(otherParams == None or not "jobID" in otherParams):
             return False
 
         collection = self.dbManager.getCollection(self.collectionName)

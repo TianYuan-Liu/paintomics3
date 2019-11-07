@@ -35,7 +35,7 @@ class UserDAO(DAO):
     def findByID(self, userID, otherParams=None):
         queryParams={"userID" : int(userID)}
 
-        if(otherParams != None and otherParams.has_key("password")):
+        if(otherParams != None and "password" in otherParams):
             queryParams["password"] = otherParams["password"]
 
         collection = self.dbManager.getCollection(self.collectionName)
@@ -51,7 +51,7 @@ class UserDAO(DAO):
     def findByEmail(self, email, otherParams=None):
         queryParams={"email" : email}
 
-        if(otherParams != None and otherParams.has_key("password")):
+        if(otherParams != None and "password" in otherParams):
             queryParams["password"] = otherParams["password"]
 
         collection = self.dbManager.getCollection(self.collectionName)

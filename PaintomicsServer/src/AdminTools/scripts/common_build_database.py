@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import os, csv, json, shutil, re, itertools, glob
 from collections import defaultdict, Counter
 from time import sleep, strftime
@@ -45,7 +45,7 @@ def generateRandomID(database = 'global'):
     valid = False
     while not valid:
         randomID = ''.join(random.sample(string.hexdigits*5,24))
-        valid = ((not xref[database].has_key(randomID)) and (not transcript2xref[database].has_key(randomID)) and (not dbname.has_key(randomID)))
+        valid = ((not randomID in xref[database]) and (not randomID in transcript2xref[database]) and (not randomID in dbname))
 
     return randomID
 
@@ -75,12 +75,12 @@ def deleteXREF(itemID, database = 'global'):
 
 def insertTR_XREF(item_id, transcript_id, database = 'global'):
     elemAux = transcript2xref[database].get(transcript_id, set([]))
-    if not transcript2xref[database].has_key(transcript_id):
+    if not transcript_id in transcript2xref[database]:
         transcript2xref[database][transcript_id] = elemAux
     elemAux.add(item_id)
 
     elemAux = xref2transcript[database].get(item_id, set([]))
-    if not xref2transcript[database].has_key(item_id):
+    if not item_id in xref2transcript[database]:
         xref2transcript[database][item_id] = elemAux
     elemAux.add(transcript_id)
 
@@ -156,7 +156,7 @@ def processEnsemblData():
         exit(1)
 
     #Get line count (for percentage)
-    total_lines = int(check_output(['wc', '-l', file_name]).split(" ")[0])
+    total_lines = int(check_output(['wc', '-l', file_name]).decode('utf-8').split(" ")[0])
 
     #Register databases and get the assigned IDs
     ensembl_transcript_db_id = insertDatabase(DBNAME_Entry("ensembl_transcript", "Ensembl transcript", "Identifier"))
@@ -200,7 +200,7 @@ def processEnsemblData():
                     insertTR_XREF(ensembl_pi, ensembl_ti)
 
             except Exception as ex:
-                errorMessage = "FAILED WHILE PROCESSING ENSEMBL MAPPING FILE [line " + str(i) + "]: "+ ex.message
+                errorMessage = "FAILED WHILE PROCESSING ENSEMBL MAPPING FILE [line " + str(i) + "]: "+ str(ex)
                 FAILED_LINES["ENSEMBL"].append([errorMessage] + row)
     csvfile.close()
 
@@ -248,7 +248,7 @@ def processRefSeqData():
     stderr.write("  * PROCESSING FILE...\n")
 
     #Count the number of genes (for percentage)
-    total_lines = int(check_output(['wc', '-l', "/tmp/build.tmp"]).split(" ")[0])
+    total_lines = int(check_output(['wc', '-l', "/tmp/build.tmp"]).decode('utf-8').split(" ")[0])
 
     #Register the databases
     refseq_rna_predicted_db_id = insertDatabase(DBNAME_Entry("refseq_rna_predicted", "RefSeq RNA nucleotide accession (predicted)", "Identifier"))
@@ -301,7 +301,7 @@ def processRefSeqData():
                     insertTR_XREF(internalID, rna_acc)
 
             except Exception as ex:
-                errorMessage= "FAILED WHILE PROCESSING REFSEQ MAPPING FILE [line " + str(i) + "]: "+ ex.message
+                errorMessage= "FAILED WHILE PROCESSING REFSEQ MAPPING FILE [line " + str(i) + "]: "+ str(ex)
                 FAILED_LINES["REFSEQ"].append([errorMessage] + row)
 
     csvfile.close()
@@ -341,7 +341,7 @@ def processRefSeqGeneSymbolData():
     stderr.write("  * PROCESSING FILE...\n")
 
     #Count the number of genes (for percentage)
-    total_lines = int(check_output(['wc', '-l', "/tmp/build.tmp"]).split(" ")[0])
+    total_lines = int(check_output(['wc', '-l', "/tmp/build.tmp"]).decode('utf-8').split(" ")[0])
 
     #Register the databases
     refseq_gene_symbol_db_id = insertDatabase(DBNAME_Entry("refseq_gene_symbol", "RefSeq Gene Symbol", "Identifier"))
@@ -408,7 +408,7 @@ def processRefSeqGeneSymbolData():
                         insertTR_XREF(gene_symbol, transcript_id)
 
             except Exception as ex:
-                errorMessage= "FAILED WHILE PROCESSING REFSEQ GENE SYMBOL MAPPING FILE [line " + str(i) + "]: "+ ex.message
+                errorMessage= "FAILED WHILE PROCESSING REFSEQ GENE SYMBOL MAPPING FILE [line " + str(i) + "]: "+ str(ex)
                 FAILED_LINES["REFSEQ GENE SYMBOL"].append([errorMessage] + row)
 
     csvfile.close()
@@ -462,7 +462,7 @@ def processUniProtData():
 
     stderr.write("  * PROCESSING FILE...\n")
     #Get line count (for percentage)
-    total_lines = int(check_output(['wc', '-l', '/tmp/build.tmp']).split(" ")[0])
+    total_lines = int(check_output(['wc', '-l', '/tmp/build.tmp']).decode('utf-8').split(" ")[0])
 
     #Register databases and get the assigned IDs
     uniprot_acc_db_id = insertDatabase(DBNAME_Entry("uniprot_acc", "UniProt Accession", "Identifier"))
@@ -527,7 +527,7 @@ def processUniProtData():
                     insertTR_XREF(uniprot_id, transcript_id)
                     insertTR_XREF(uniprot_acc, transcript_id)
             except Exception as ex:
-                errorMessage = "FAILED WHILE PROCESSING UNIPROT MAPPING FILE [line " + str(i) + "]: "+ ex.message
+                errorMessage = "FAILED WHILE PROCESSING UNIPROT MAPPING FILE [line " + str(i) + "]: "+ str(ex)
                 FAILED_LINES["UNIPROT"].append([errorMessage] + row)
 
     csvfile.close()
@@ -564,7 +564,7 @@ def processVegaData():
         exit(1)
 
     #Get line count (for percentage)
-    total_lines = int(check_output(['wc', '-l', file_name]).split(" ")[0])
+    total_lines = int(check_output(['wc', '-l', file_name]).decode('utf-8').split(" ")[0])
 
     #Register databases and get the assigned IDs
     ensembl_transcript_db_id = insertDatabase(DBNAME_Entry("ensembl_transcript", "Ensembl transcript", "Identifier"))
@@ -614,7 +614,7 @@ def processVegaData():
                     insertTR_XREF(vega_pi, ensembl_ti)
 
             except Exception as ex:
-                errorMessage = "FAILED WHILE PROCESSING ENSEMBL VEGA MAPPING FILE [line " + str(i) + "]: "+ ex.message
+                errorMessage = "FAILED WHILE PROCESSING ENSEMBL VEGA MAPPING FILE [line " + str(i) + "]: "+ str(ex)
                 FAILED_LINES["VEGA"].append([errorMessage] + row)
     csvfile.close()
 
@@ -681,7 +681,7 @@ def processMapManMappingData():
             for ontology_term in ontology_terms:
                 external_mapping[ontology_term].extend([mapping_entry["mapman_gene"]])
 
-    total_lines = int(check_output(['wc', '-l', mapman_kegg_file_name]).split(" ")[0])
+    total_lines = int(check_output(['wc', '-l', mapman_kegg_file_name]).decode('utf-8').split(" ")[0])
 
     with open(mapman_kegg_file_name, 'r') as mapman_file:
         i = 0
@@ -724,10 +724,10 @@ def processMapManMappingData():
                             insertTR_XREF(kegg_gi, transcript_id)
 
                 # If no mates were linked, add a transcript with itself
-                if not xref2transcript['global'].has_key(external_gi):
+                if not external_gi in xref2transcript['global']:
                     insertTR_XREF(external_gi, generateRandomID())
             except Exception as ex:
-                errorMessage = "FAILED WHILE PROCESSING " + mapman_kegg_file_name +" MAPPING FILE [line " + str(i) + "]: "+ ex.message
+                errorMessage = "FAILED WHILE PROCESSING " + mapman_kegg_file_name +" MAPPING FILE [line " + str(i) + "]: "+ str(ex)
 
         # If we still have info about other genes not present in that file, add them
         all_genes = set(list(itertools.chain.from_iterable(external_mapping.values())))
@@ -805,7 +805,7 @@ def processKEGGMappingData():
 
 def processKEGGMappingDataAUX(display_file_name, file_name, current_db_id, kegg_id_db_id, transcripts_db_id, prefix):
     #Get line count (for percentage)
-    total_lines = int(check_output(['wc', '-l', file_name]).split(" ")[0])
+    total_lines = int(check_output(['wc', '-l', file_name]).decode('utf-8').split(" ")[0])
 
     #Process files
     stderr.write("\n\nPROCESSING " + display_file_name +" MAPPING FILE...\n")
@@ -832,14 +832,14 @@ def processKEGGMappingDataAUX(display_file_name, file_name, current_db_id, kegg_
                 insertTR_XREF(kegg_gi, transcript_id)
 
             except Exception as ex:
-                errorMessage = "FAILED WHILE PROCESSING " + display_file_name +" MAPPING FILE [line " + str(i) + "]: "+ ex.message
+                errorMessage = "FAILED WHILE PROCESSING " + display_file_name +" MAPPING FILE [line " + str(i) + "]: "+ str(ex)
     csvfile.close()
 
     return total_lines
 
 def processKEGG2GeneSymbolMappingData(display_file_name, file_name, kegg_gene_symbol_db_id, kegg_gene_symbol_synonyms_db_id, kegg_id_db_id, transcripts_db_id):
     #Get line count (for percentage)
-    total_lines = int(check_output(['wc', '-l', file_name]).split(" ")[0])
+    total_lines = int(check_output(['wc', '-l', file_name]).decode('utf-8').split(" ")[0])
 
     #Process files
     stderr.write("\n\nPROCESSING " + display_file_name +" MAPPING FILE...\n")
@@ -881,7 +881,7 @@ def processKEGG2GeneSymbolMappingData(display_file_name, file_name, kegg_gene_sy
                     insertTR_XREF(gene_symbol, transcript_id)
 
             except Exception as ex:
-                errorMessage = "FAILED WHILE PROCESSING " + display_file_name +" MAPPING FILE [line " + str(i) + "]: "+ ex.message
+                errorMessage = "FAILED WHILE PROCESSING " + display_file_name +" MAPPING FILE [line " + str(i) + "]: "+ str(ex)
     csvfile.close()
 
     return total_lines
@@ -930,7 +930,7 @@ def processKEGGCommonData(dirName, ROOT_DIRECTORY):
 
 def processKEGG2CompoundSymbolMappingData(file_name):
     #Get line count (for percentage)
-    total_lines = int(check_output(['wc', '-l', file_name]).split(" ")[0])
+    total_lines = int(check_output(['wc', '-l', file_name]).decode('utf-8').split(" ")[0])
     # KEGG_COMPOUNDS = []
 
     #STEP 1. Process files
@@ -953,12 +953,12 @@ def processKEGG2CompoundSymbolMappingData(file_name):
                     # KEGG_COMPOUNDS.append({"id" : kegg_id, "name" : compound_symbol.lstrip()})
                     KEGG_COMPOUNDS[compound_symbol.lstrip()] = kegg_id
             except Exception as ex:
-                errorMessage = "FAILED WHILE PROCESSING KEGG 2 Compound MAPPING FILE [line " + str(i) + "]: "+ ex.message
+                errorMessage = "FAILED WHILE PROCESSING KEGG 2 Compound MAPPING FILE [line " + str(i) + "]: "+ str(ex)
     csvfile.close()
 
     #STEP 2. DUMP THE TABLE INTO A FILE
     file = open("/tmp/compounds.tmp", 'w')
-    for cpdName, cpdID in KEGG_COMPOUNDS.iteritems():
+    for cpdName, cpdID in KEGG_COMPOUNDS.items():
         # file.write(json.dumps(elem, separators=(',',':')) + "\n")
         file.write(json.dumps({"id" : cpdID, "name" : cpdName}, separators=(',', ':')) + "\n")
     file.close()
@@ -1123,7 +1123,7 @@ def processMapManPathwaysData():
                         pattern_search = re.compile(r"{0}(\.|\Z)".format(id_terms))
 
                         # external_mapping
-                        genes_linked = set(list(itertools.chain.from_iterable([v for k, v in external_mapping.iteritems() if pattern_search.search(k)])))
+                        genes_linked = set(list(itertools.chain.from_iterable([v for k, v in external_mapping.items() if pattern_search.search(k)])))
 
                         # Link pathway to genes for network construction
                         pathway2gene[pathway_id].update(genes_linked)
@@ -1140,11 +1140,11 @@ def processMapManPathwaysData():
                             ALL_PATHWAYS[pathway_id]["genes"].append(entryAux)
 
                 except Exception as ex:
-                    errorMessage = "FAILED WHILE PROCESSING PATHWAY XML FILE [" + file_name + "]: " + ex.message
+                    errorMessage = "FAILED WHILE PROCESSING PATHWAY XML FILE [" + file_name + "]: " + str(ex)
                     FAILED_LINES["MAPMAN PATHWAYS"].append([errorMessage])
 
         except Exception as ex:
-            errorMessage = "FAILED WHILE PROCESSING PATHWAY XML FILE [" + file_name + "]: " + ex.message
+            errorMessage = "FAILED WHILE PROCESSING PATHWAY XML FILE [" + file_name + "]: " + str(ex)
 
     #***********************************************************************************
     #* GENERATE THE NETWORK FILE DATA FOR MAPMAN
@@ -1223,18 +1223,18 @@ def processMapManPathwaysData():
     #          FOR EACH PATHWAY ID AND FOR EACH POSITION WITH NON ZERO (SHARE AT LEAST 1 GENE), CREATE AN EDGE
     #***********************************************************************************
     already_linked_pathways={}
-    for path_id, shared_genes in pathways_matrix.iteritems():
+    for path_id, shared_genes in pathways_matrix.items():
         #First create the edges based on the links between networks (extracted from KGML files)
-        if ALL_PATHWAYS.has_key(path_id):
+        if path_id in ALL_PATHWAYS:
             relatedPathways = ALL_PATHWAYS[path_id]["relatedPathways"]
             for other_path_id in relatedPathways:
-                if not already_linked_pathways.has_key(path_id + "-" + other_path_id["id"]):
+                if not path_id + "-" + other_path_id["id"] in already_linked_pathways:
                     EDGES.append({"data": {"id": path_id + "-" + other_path_id["id"], "source": path_id, "target": other_path_id["id"], "weight": 1, "class": 'l'}, "group":"edges"})
                     #Avoid repeated edges (including the opposite links)
                     already_linked_pathways[path_id + "-" + other_path_id["id"]] = 1
                     already_linked_pathways[other_path_id["id"]+ "-" + path_id] = 1
         #Add the edges based on the existance of shared genes
-        for other_path_id, n_shared_genes in shared_genes.iteritems():
+        for other_path_id, n_shared_genes in shared_genes.items():
             if n_shared_genes > 0:
                 EDGES.append({"data": {"id": path_id + "-" + other_path_id, "source": path_id, "target": other_path_id, "weight": n_shared_genes, "class": 's'}, "group":"edges"})
 
@@ -1242,7 +1242,7 @@ def processMapManPathwaysData():
     #* SAVE THE NETWORK TO A FILE
     #***********************************************************************************
     network = {
-        "nodes": NODES.values(),
+        "nodes": list(NODES.values()),
         "edges": EDGES
     }
     csvfile = open(DATA_DIR + "pathways_network_MapMan.json", 'w')
@@ -1271,6 +1271,7 @@ def processReactomePathwaysData():
 
     # Declare later used variables
     FAILED_LINES["REACTOME PATHWAYS"] = []
+    TOTAL_FEATURES["REACTOME PATHWAYS"] = 0
     NODES = {}
     EDGES = []
     #
@@ -1323,6 +1324,26 @@ def processReactomePathwaysData():
     event_cache = {}
     reactome_id_2_refseq_tid = {} # We use a different one
 
+    reuseDownloadedFiles = True
+
+
+    def downloadJSONFile(URL, fileName, outputName, delay, maxTries, checkIfExists=False):
+        numberOfTries = 3
+
+        while numberOfTries > 0:
+            try:
+                downloadFile(URL, fileName, outputName, delay, maxTries, checkIfExists)
+
+                with open(outputName) as test_json:
+                    json.load(test_json)
+                    break
+            except Exception as ex:
+                os.remove(outputName)
+                continue
+            finally:
+                numberOfTries -= 1
+
+
     try:
         # The process will also insert information about compounds, thus discarding the previous database
         # and importing a new one, needing again the KEGG compounds.
@@ -1342,8 +1363,8 @@ def processReactomePathwaysData():
                 pathway_details_url = COMMON_RESOURCES['reactome'].get("details_url").format(pathway_entry["stId"])
                 pathway_details_filename = REACTOME_DIR + str(pathway_entry["stId"]) + "_secondary_pathways.cache"
 
-                downloadFile(pathway_details_url, "", pathway_details_filename,
-                             SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, True)
+                downloadJSONFile(pathway_details_url, "", pathway_details_filename,
+                             SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
                 stderr.write("... Done\n")
 
                 with open(pathway_details_filename) as secondary_file:
@@ -1358,8 +1379,8 @@ def processReactomePathwaysData():
                         secondary_pathway_details_filename = REACTOME_DIR + str(secondary_pathway_id) + "_pathway.cache"
 
                         stderr.write("\nEvent Downloading event file pathways file " + str(secondary_pathway_id))
-                        downloadFile(secondary_pathway_details_url, "", secondary_pathway_details_filename,
-                                     SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, True)
+                        downloadJSONFile(secondary_pathway_details_url, "", secondary_pathway_details_filename,
+                                     SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
                         stderr.write("... Done\n")
 
                         with open(secondary_pathway_details_filename) as secondary_pathways:
@@ -1402,26 +1423,25 @@ def processReactomePathwaysData():
                                     stderr.write("\nEvent Downloading nodes url file " + str(pathway_id))
                                     nodes_url = COMMON_RESOURCES['reactome'].get("nodes_url").format(pathway_id)
                                     nodes_tmp_file = REACTOME_DIR + "/" + pathway_id + ".json"
-                                    downloadFile(nodes_url, "", nodes_tmp_file,
-                                                 SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, True)
+                                    downloadJSONFile(nodes_url, "", nodes_tmp_file,
+                                                 SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
                                     stderr.write("... Done\n")
                                 else:
                                     # Download parent info coordinates
                                     stderr.write("\nEvent Downloading nodes url file " + str(secondary_pathway_id))
                                     nodes_url = COMMON_RESOURCES['reactome'].get("nodes_url").format(secondary_pathway_id)
                                     nodes_tmp_file = REACTOME_DIR + "/" + secondary_pathway_id + ".json"
-                                    downloadFile(nodes_url, "", nodes_tmp_file,
-                                                 SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, True)
+                                    downloadJSONFile(nodes_url, "", nodes_tmp_file,
+                                                 SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
                                     stderr.write("... Done\n")
 
                                     # Download parent extra graph info to link child elements
                                     stderr.write("\nEvent Downloading graph urls file " + str(secondary_pathway_id))
                                     graph_url = COMMON_RESOURCES['reactome'].get("graph_url").format(secondary_pathway_id)
                                     graph_tmp_file = REACTOME_DIR + "/" + secondary_pathway_id + ".graph.json"
-                                    downloadFile(graph_url, "", graph_tmp_file,
-                                                 SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, True)
+                                    downloadJSONFile(graph_url, "", graph_tmp_file,
+                                                 SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
                                     stderr.write("... Done\n")
-
 
                                     try:
                                         with open(graph_tmp_file) as graph_info:
@@ -1452,11 +1472,11 @@ def processReactomePathwaysData():
                                                     details_url = COMMON_RESOURCES['reactome'].get("details_url").format(
                                                         event_id)
                                                     details_tmp_file = REACTOME_DIR + "/" + str(event_id) + "_details.cache"
-                                                    downloadFile(details_url, "", details_tmp_file,
+                                                    downloadJSONFile(details_url, "", details_tmp_file,
                                                                  #SERVER_SETTINGS.DOWNLOAD_DELAY_1,
                                                                  0.5,
                                                                  SERVER_SETTINGS.MAX_TRIES_1,
-                                                                 True)
+                                                                 reuseDownloadedFiles)
                                                     stderr.write("... Done\n")
 
                                                     with open(details_tmp_file) as event_info:
@@ -1479,7 +1499,7 @@ def processReactomePathwaysData():
                                                 pathway_nodes_ids.update(itertools.chain.from_iterable(diagram_ids))
                                                 stderr.write("... Done\n")
                                     except Exception as ex:
-                                        errorMessage = ex.message
+                                        errorMessage = str(ex)
                                         FAILED_LINES["REACTOME PATHWAYS"].append([str(secondary_pathway_id) + ": " + errorMessage])
                                         continue
 
@@ -1552,12 +1572,12 @@ def processReactomePathwaysData():
                                         # Look before if the file exists as cache.
                                         entity_filename = REACTOME_DIR + "/" + str(entity_id) + ".cache"
 
-                                        if not os.path.exists(entity_filename):
-                                            stderr.write("\nDownload entity url file " + str(entity_id))
-                                            entity_url = COMMON_RESOURCES['reactome'].get("entity_url").format(entity_id)
-                                            downloadFile(entity_url, "", entity_filename,
-                                                         SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, True)
-                                            stderr.write("... Done!\n")
+                                        # if not os.path.exists(entity_filename):
+                                        stderr.write("\nDownload entity url file " + str(entity_id))
+                                        entity_url = COMMON_RESOURCES['reactome'].get("entity_url").format(entity_id)
+                                        downloadJSONFile(entity_url, "", entity_filename,
+                                                     SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
+                                        stderr.write("... Done!\n")
 
                                         # The file will contain all the elements associated to the particular node.
                                         with open(entity_filename) as entity_info:
@@ -1575,9 +1595,9 @@ def processReactomePathwaysData():
                                                 if not os.path.exists(feature_details_filename):
                                                     stderr.write("\nDownload feature DETAILS url file " + str(feature_id))
                                                     feature_details_url = COMMON_RESOURCES['reactome'].get("details_url").format(feature_id)
-                                                    downloadFile(feature_details_url, "", feature_details_filename,
+                                                    downloadJSONFile(feature_details_url, "", feature_details_filename,
                                                                  SERVER_SETTINGS.DOWNLOAD_DELAY_1,
-                                                                 SERVER_SETTINGS.MAX_TRIES_1, True)
+                                                                 SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
                                                     stderr.write("... Done!\n")
 
                                                 with open(feature_details_filename) as feature_info:
@@ -1679,7 +1699,7 @@ def processReactomePathwaysData():
                                                     stderr.write("... Done!\n")
 
     except Exception as ex:
-        errorMessage = "FAILED WHILE PROCESSING REACTOME PATHWAYS: " + ex.message
+        errorMessage = "FAILED WHILE PROCESSING REACTOME PATHWAYS: " + str(ex)
         FAILED_LINES["REACTOME PATHWAYS"].append([errorMessage])
         return
 
@@ -1687,12 +1707,12 @@ def processReactomePathwaysData():
     # Append the new Reactome compounds to the file previously generated
     # by KEGG process.
     file = open("/tmp/compounds.tmp", 'a')
-    for cpdName, cpdID in REACTOME_COMPOUNDS.iteritems():
+    for cpdName, cpdID in REACTOME_COMPOUNDS.items():
         file.write(json.dumps({"id" : cpdID, "name" : cpdName}, separators=(',', ':')) + "\n")
     file.close()
 
 
-    # Insert the compounds collection
+    # Insert the compounds colletracebacction
     createCompoundsCollection()
 
     # MapMan pathways files are the same for each species, even the XML files.
@@ -1782,26 +1802,26 @@ def processReactomePathwaysData():
             NODES[path_id]["data"]["total_features"] = len(gene_ids)
 
             # Write one row for each gene and pathway
-            reactome_gene2pathway.writelines(geneID.encode('utf-8') + "\t" + path_id.encode('utf-8') + "\n" for geneID in gene_ids)
-
+            # reactome_gene2pathway.writelines(geneID.encode('utf-8') + "\t".encode('utf-8') + path_id.encode('utf-8') + "\n".encode('utf-8') for geneID in gene_ids)
+            reactome_gene2pathway.writelines(f"{geneID}\t{path_id}\n" for geneID in gene_ids)
 
     #***********************************************************************************
     #* BULK THE MATRIX INTO JSON:
     #          FOR EACH PATHWAY ID AND FOR EACH POSITION WITH NON ZERO (SHARE AT LEAST 1 GENE), CREATE AN EDGE
     #***********************************************************************************
     already_linked_pathways={}
-    for path_id, shared_genes in pathways_matrix.iteritems():
+    for path_id, shared_genes in pathways_matrix.items():
         #First create the edges based on the links between networks (extracted from KGML files)
-        if ALL_PATHWAYS.has_key(path_id):
+        if path_id in ALL_PATHWAYS:
             relatedPathways = ALL_PATHWAYS[path_id]["relatedPathways"]
             for other_path_id in relatedPathways:
-                if not already_linked_pathways.has_key(path_id + "-" + other_path_id["id"]):
+                if not path_id + "-" + other_path_id["id"] in already_linked_pathways:
                     EDGES.append({"data": {"id": path_id + "-" + other_path_id["id"], "source": path_id, "target": other_path_id["id"], "weight": 1, "class": 'l'}, "group":"edges"})
                     #Avoid repeated edges (including the opposite links)
                     already_linked_pathways[path_id + "-" + other_path_id["id"]] = 1
                     already_linked_pathways[other_path_id["id"]+ "-" + path_id] = 1
         #Add the edges based on the existance of shared genes
-        for other_path_id, n_shared_genes in shared_genes.iteritems():
+        for other_path_id, n_shared_genes in shared_genes.items():
             if n_shared_genes > 0:
                 EDGES.append({"data": {"id": path_id + "-" + other_path_id, "source": path_id, "target": other_path_id, "weight": n_shared_genes, "class": 's'}, "group":"edges"})
 
@@ -1809,7 +1829,7 @@ def processReactomePathwaysData():
     #* SAVE THE NETWORK TO A FILE
     #***********************************************************************************
     network = {
-        "nodes": NODES.values(),
+        "nodes": list(NODES.values()),
         "edges": EDGES
     }
     csvfile = open(DATA_DIR + "pathways_network_Reactome.json", 'w')
@@ -1862,12 +1882,12 @@ def processKEGGPathwaysData():
             secondClassification = line[1]
         elif line[0][0] == "C":
             pathway_id   = line[2]
-            if ALL_PATHWAYS.has_key(SPECIE + pathway_id):
+            if SPECIE + pathway_id in ALL_PATHWAYS:
                 ALL_PATHWAYS[SPECIE + pathway_id]["classification"] = mainClassification + ";" + secondClassification
     file.close()
 
     #STEP 3. PROCESS ALL THE KGML FILES
-    i =0; prev=-1; errorMessage=""; total_lines= len(ALL_PATHWAYS.keys())
+    i =0; prev=-1; errorMessage=""; total_lines= len(list(ALL_PATHWAYS.keys()))
     for pathway_id in ALL_PATHWAYS.keys():
         i+=1
         prev = showPercentage(i, total_lines, prev, errorMessage)
@@ -1895,12 +1915,12 @@ def processKEGGPathwaysData():
                         }
 
                         for featureID in featureIDList:
-                            if (entryType == "compound") and not already_added.has_key(featureID):
+                            if (entryType == "compound") and not featureID in already_added:
                                 entryAux = entry.copy()
                                 entryAux["id"] = featureID.replace("cpd:","")
                                 ALL_PATHWAYS[pathway_id]["compounds"].append(entryAux)
                                 #already_added[featureID] = 1
-                            elif(entryType == "gene") and not already_added.has_key(featureID):
+                            elif(entryType == "gene") and not featureID in already_added:
                                 entryAux = entry.copy()
                                 entryAux["id"] = featureID.replace(SPECIE + ":","")
                                 ALL_PATHWAYS[pathway_id]["genes"].append(entryAux)
@@ -1921,11 +1941,11 @@ def processKEGGPathwaysData():
 
 
                 except Exception as ex:
-                    errorMessage = "FAILED WHILE PROCESSING PATHWAY KGML FILE [" + file_name + "]: " + ex.message
+                    errorMessage = "FAILED WHILE PROCESSING PATHWAY KGML FILE [" + file_name + "]: " + str(ex)
                     FAILED_LINES["KEGG PATHWAYS"].append([errorMessage])
 
         except Exception as ex:
-            errorMessage = "FAILED WHILE PROCESSING PATHWAY KGML FILE [" + file_name + "]: " + ex.message
+            errorMessage = "FAILED WHILE PROCESSING PATHWAY KGML FILE [" + file_name + "]: " + str(ex)
 
     TOTAL_FEATURES["KEGG PATHWAYS"]=total_lines
 
@@ -2012,7 +2032,7 @@ def generatePathwaysNetwork(ALL_PATHWAYS):
             gene2pathway[row[0]].add(row[1].replace("path:" + SPECIE, ""))
 
     # Process the info
-    for gene, associated_paths in gene2pathway.iteritems():
+    for gene, associated_paths in gene2pathway.items():
         while len(associated_paths) > 0:
             current_path = associated_paths.pop()
             for other_path in associated_paths:
@@ -2042,7 +2062,7 @@ def generatePathwaysNetwork(ALL_PATHWAYS):
                     NODES[previous_pathway]["data"]["total_features"] += nGenes
                 except:
                     stderr.write("No nodes information for Pathway " + previous_pathway + ".\n")
-                    stderr.write("Updating the installed common KEGG information may solve this issue. Reinstall this specie after that.\n")
+                    stderr.write("Updating the installed common KEGG information may solve this issue. Reinstall this species after that.\n")
                 nGenes=0
             nGenes+=1
             previous_pathway = path_id
@@ -2055,18 +2075,18 @@ def generatePathwaysNetwork(ALL_PATHWAYS):
     #          FOR EACH PATHWAY ID AND FOR EACH POSITION WITH NON ZERO (SHARE AT LEAST 1 GENE), CREATE AN EDGE
     #***********************************************************************************
     already_linked_pathways={}
-    for path_id, shared_genes in pathways_matrix.iteritems():
+    for path_id, shared_genes in pathways_matrix.items():
         #First create the edges based on the links between networks (extracted from KGML files)
-        if ALL_PATHWAYS.has_key(SPECIE + path_id):
+        if SPECIE + path_id in ALL_PATHWAYS:
             relatedPathways = ALL_PATHWAYS[SPECIE + path_id]["relatedPathways"]
             for other_path_id in relatedPathways:
-                if not already_linked_pathways.has_key(path_id + "-" + other_path_id["id"]):
+                if not path_id + "-" + other_path_id["id"] in already_linked_pathways:
                     EDGES.append({"data": {"id": path_id + "-" + other_path_id["id"], "source": SPECIE + path_id, "target": SPECIE + other_path_id["id"], "weight": 1, "class": 'l'}, "group":"edges"})
                     #Avoid repeated edges (including the opposite links)
                     already_linked_pathways[path_id + "-" + other_path_id["id"]] = 1
                     already_linked_pathways[other_path_id["id"]+ "-" + path_id] = 1
         #Add the edges based on the existance of shared genes
-        for other_path_id, n_shared_genes in shared_genes.iteritems():
+        for other_path_id, n_shared_genes in shared_genes.items():
             if n_shared_genes > 0:
                 EDGES.append({"data": {"id": path_id + "-" + other_path_id, "source": SPECIE + path_id, "target": SPECIE + other_path_id, "weight": n_shared_genes, "class": 's'}, "group":"edges"})
 
@@ -2074,7 +2094,7 @@ def generatePathwaysNetwork(ALL_PATHWAYS):
     #* STEP 6 SAVE THE NETWORK TO A FILE
     #***********************************************************************************
     network = {
-        "nodes": NODES.values(),
+        "nodes": list(NODES.values()),
         "edges": EDGES
     }
     csvfile = open(DATA_DIR + "pathways_network.json", 'w')
@@ -2116,7 +2136,7 @@ def mergeNetworkFiles():
 def printResults():
     stderr.write("\n\n\n")
     stderr.write("\nVALID FEATURES LINES    : " + str(len(ALL_ENTRIES)))
-    for key, value in FAILED_LINES.iteritems():
+    for key, value in FAILED_LINES.items():
         stderr.write("\nERRONEOUS " + key + " LINES : " + str(len(value)) + " of " + str(TOTAL_FEATURES[key]) + " [" + str(int(len(value)/float(TOTAL_FEATURES[key])*100)) +"%]")
 
     stderr.write("\n\n")
@@ -2132,12 +2152,12 @@ def dumpDatabase():
         os.remove(dump_xref_file)
 
     # To avoid depleting the ram completely, repeat the process for each database
-    for dbid, db_values in transcript2xref.iteritems():
+    for dbid, db_values in transcript2xref.items():
         stderr.write("\nDumping database " + str(dbid))
 
         xref2xref = defaultdict(list)
 
-        for transcriptID, value in db_values.iteritems():
+        for transcriptID, value in db_values.items():
             for feature_id in value:
                 xref2xref[feature_id].append(value)
 
@@ -2167,7 +2187,7 @@ def dumpDatabase():
     #STEP 3. DUMP THE pathways TABLE INTO A FILE
     file = open("/tmp/pathways.tmp", 'w')
 
-    error_tolerance = int(len(ALL_PATHWAYS.items()) * 0.05)
+    error_tolerance = int(len(list(ALL_PATHWAYS.items())) * 0.05)
     for elem in ALL_PATHWAYS.values():
         try:
             file.write(json.dumps(elem, separators=(',',':')) + "\n")
@@ -2190,7 +2210,7 @@ def dumpErrors():
     file = open("/tmp/errors.tmp", 'w')
 
     try:
-        for key, value in FAILED_LINES.iteritems():
+        for key, value in FAILED_LINES.items():
             if len(value) > 0:
                 file.write("#************************************\n#\n# " + key + "\n#\n#************************************\n")
                 for line in value:
@@ -2216,7 +2236,7 @@ def createDatabase():
         command = "mongoimport --db " + SPECIE + "-paintomics --collection versions  --drop --file /tmp/versions.tmp"
         check_call(command, shell=True)
 
-        from pymongo import MongoClient, ASCENDING
+        from pymongo import MongoClient, ASCENDING, TEXT
         from conf.serverconf import MONGODB_HOST, MONGODB_PORT
         client = MongoClient(MONGODB_HOST, MONGODB_PORT)
 
@@ -2247,11 +2267,11 @@ def createCompoundsCollection():
         command = "mongoimport --db global-paintomics --collection kegg_compounds  --drop --file /tmp/compounds.tmp"
         check_call(command, shell=True)
 
-        from pymongo import MongoClient, ASCENDING
+        from pymongo import MongoClient, ASCENDING, TEXT
         from conf.serverconf import MONGODB_HOST, MONGODB_PORT
         client = MongoClient(MONGODB_HOST, MONGODB_PORT)
         db = client["global-paintomics"]
-        db.kegg_compounds.create_index([("name", ASCENDING)])
+        db.kegg_compounds.create_index([("name", TEXT)])
 
     except CalledProcessError as ex:
         raise ex

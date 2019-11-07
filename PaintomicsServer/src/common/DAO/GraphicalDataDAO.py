@@ -15,7 +15,7 @@ class GraphicalDataDAO(DAO):
     def findByID(self, id, otherParams=None):
         queryParams={"pathwayID" : id}
 
-        if(otherParams.has_key("jobID")):
+        if("jobID" in otherParams):
             queryParams["jobID"] = otherParams["jobID"]
 
         collection = self.dbManager.getCollection(self.collectionName)
@@ -44,7 +44,7 @@ class GraphicalDataDAO(DAO):
 
     def removeAll(self, otherParams=None):
         queryParams={}
-        if(otherParams.has_key("jobID")):
+        if("jobID" in otherParams):
             queryParams["jobID"] = otherParams["jobID"]
         collection = self.dbManager.getCollection(self.collectionName)
         match = collection.remove(queryParams)

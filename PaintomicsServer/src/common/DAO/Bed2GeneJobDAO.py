@@ -51,7 +51,7 @@ class Bed2GeneJobDAO(DAO):
     # DELETE INSTANCES
     #******************************************************************************************************************
     def remove(self, id, otherParams=None):
-        if(otherParams == None or not otherParams.has_key("userID")):
+        if(otherParams == None or not "userID" in otherParams):
             return False
         collection = self.dbManager.getCollection(self.collectionName)
 

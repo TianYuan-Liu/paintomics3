@@ -15,7 +15,6 @@ from src.classes.FoundFeature import FoundFeature
 from src.conf.organismDB import dicDatabases
 from src.conf.serverconf import MONGODB_HOST, MONGODB_PORT, MAX_THREADS, MAX_WAIT_THREADS #MULTITHREADING
 
-
 #*****************************************************************
 #   _____ ____  __  __ __  __  ____  _   _
 #  / ____/ __ \|  \/  |  \/  |/ __ \| \ | |

@@ -7,8 +7,7 @@ from src.common.Util import Singleton
 
 from src.conf.serverconf import KEGG_CACHE_MAX_SIZE
 
-class KeggInformationManager():
-    __metaclass__ = Singleton
+class KeggInformationManager(metaclass=Singleton):
 
     def __init__(self, KEGG_DATA_DIR=""):
         logging.info("CREATING NEW INSTANCE FOR KeggInformationManager...")

@@ -13,11 +13,11 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with Paintomics.  If not, see <http://www.gnu.org/licenses/>.
-#matchedGeneIDsTablesList
+#
 #  More info http://bioinfo.cipf.es/paintomics
 #  Technical contact paintomics@cipf.es
 #**************************************************************
-from Image import open as image_open
+from PIL.Image import open as image_open
 
 class Singleton(type):
     _instances = {}

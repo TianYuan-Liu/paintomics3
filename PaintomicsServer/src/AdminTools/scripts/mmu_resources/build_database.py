@@ -18,6 +18,8 @@ COMMON_BUILD_DB_TOOLS = imp.load_source('common_build_database', ROOT_DIR + "scr
 COMMON_BUILD_DB_TOOLS.SPECIE= SPECIE
 COMMON_BUILD_DB_TOOLS.DATA_DIR= DATA_DIR
 COMMON_BUILD_DB_TOOLS.EXTERNAL_RESOURCES = imp.load_source('download_conf',  ROOT_DIR + "scripts/" + SPECIE + "_resources/download_conf.py").EXTERNAL_RESOURCES
+COMMON_BUILD_DB_TOOLS.COMMON_RESOURCES = imp.load_source('download_conf',  ROOT_DIR + "scripts/common_resources/download_conf.py").EXTERNAL_RESOURCES
+COMMON_BUILD_DB_TOOLS.SERVER_SETTINGS = imp.load_source('serverconf.py',  ROOT_DIR + "../conf/serverconf.py")
 
 #**************************************************************************
 # CHANGE THE CODE FROM HERE
@@ -38,6 +40,8 @@ try:
     # STEP 2. PROCESS THE KEGG DATABASE
     #**************************************************************************
     COMMON_BUILD_DB_TOOLS.processKEGGPathwaysData()
+    COMMON_BUILD_DB_TOOLS.processReactomePathwaysData()
+    COMMON_BUILD_DB_TOOLS.mergeNetworkFiles()
 
     #**************************************************************************
     # RESULTS
@@ -53,11 +57,11 @@ try:
 
 
 except CalledProcessError as ex:
-    stderr.write("FAILED WHILE PROCESSING DATA " + ex.message)
+    stderr.write("FAILED WHILE PROCESSING DATA " + str(ex))
     traceback.print_exc(file=stderr)
     exit(1)
 except Exception as ex:
-    stderr.write("FAILED WHILE PROCESSING DATA " + ex.message)
+    stderr.write("FAILED WHILE PROCESSING DATA " + str(ex))
     traceback.print_exc(file=stderr)
     exit(1)
 

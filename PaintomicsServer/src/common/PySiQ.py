@@ -104,9 +104,9 @@ class Queue:
 
             if job_id=="":
                 job_id = self.get_random_id()
-                while self.jobs.has_key(job_id):
+                while job_id in self.jobs:
                     job_id = self.get_random_id()
-            elif self.jobs.has_key(job_id):
+            elif job_id in self.jobs:
                 # Check if it has finished, then remove
                 if self.jobs.get(job_id).status == JobStatus.FINISHED:
                     self.get_result(job_id)
@@ -202,7 +202,7 @@ class Worker():
             self.job.status=JobStatus.FINISHED
         except Exception as ex:
             self.job.status = JobStatus.FAILED
-            self.job.error_message=ex.message
+            self.job.error_message=str(ex)
         finally:
             logging.info("Worker " + self.id + " stops working...")
             self.status=WorkerStatus.IDLE

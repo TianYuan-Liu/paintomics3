@@ -52,11 +52,11 @@ try:
 
 
 except CalledProcessError as ex:
-    stderr.write("FAILED WHILE PROCESSING DATA " + ex.message)
+    stderr.write("FAILED WHILE PROCESSING DATA " + str(ex))
     traceback.print_exc(file=stderr)
     exit(1)
 except Exception as ex:
-    stderr.write("FAILED WHILE PROCESSING DATA " + ex.message)
+    stderr.write("FAILED WHILE PROCESSING DATA " + str(ex))
     traceback.print_exc(file=stderr)
     exit(1)
 

@@ -35,9 +35,9 @@ class FileDAO(DAO):
     def findByID(self, userID, otherParams=None):
         queryParams={"userID" : userID}
 
-        if(otherParams != None and otherParams.has_key("dataType")):
+        if(otherParams != None and "dataType" in otherParams):
             queryParams["dataType"] = otherParams["dataType"]
-        if(otherParams != None and otherParams.has_key("omicType")):
+        if(otherParams != None and "omicType" in otherParams):
             queryParams["omicType"] = otherParams["omicType"]
 
         collection = self.dbManager.getCollection(self.collectionName)
@@ -54,11 +54,11 @@ class FileDAO(DAO):
         queryParams={}
         matchedFiles = []
 
-        if(otherParams != None and otherParams.has_key("userID")):
+        if(otherParams != None and "userID" in otherParams):
             queryParams["userID"] = otherParams["userID"]
-        if(otherParams != None and otherParams.has_key("dataType")):
+        if(otherParams != None and "dataType" in otherParams):
             queryParams["dataType"] = otherParams["dataType"]
-        if(otherParams != None and otherParams.has_key("omicType")):
+        if(otherParams != None and "omicType" in otherParams):
             queryParams["omicType"] = otherParams["omicType"]
 
         collection = self.dbManager.getCollection(self.collectionName)
@@ -76,7 +76,7 @@ class FileDAO(DAO):
 
     def insert(self, instance, otherParams=None):
         fileInstance = instance
-        if(otherParams == None or not otherParams.has_key("userID")):
+        if(otherParams == None or not "userID" in otherParams):
             return False
         collection = self.dbManager.getCollection(self.collectionName)
 
@@ -88,7 +88,7 @@ class FileDAO(DAO):
 
     def remove(self, id, otherParams=None):
         fileName = id
-        if(otherParams == None or not otherParams.has_key("userID")):
+        if(otherParams == None or not "userID" in otherParams):
             return False
         collection = self.dbManager.getCollection(self.collectionName)
 
@@ -97,7 +97,7 @@ class FileDAO(DAO):
         return True
 
     def removeAll(self, otherParams=None):
-        if(otherParams == None or not otherParams.has_key("userID")):
+        if(otherParams == None or not "userID" in otherParams):
             return False
         collection = self.dbManager.getCollection(self.collectionName)
 

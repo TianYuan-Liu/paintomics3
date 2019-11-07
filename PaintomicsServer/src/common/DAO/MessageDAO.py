@@ -49,7 +49,7 @@ class MessageDAO(DAO):
         queryParams={}
         matchedMessages = []
 
-        if(otherParams != None and otherParams.has_key("message_type") and otherParams.get("message_type") != None):
+        if(otherParams != None and "message_type" in otherParams and otherParams.get("message_type") != None):
             queryParams={"message_type" : otherParams.get("message_type")}
 
         collection = self.dbManager.getCollection(self.collectionName)
@@ -73,7 +73,7 @@ class MessageDAO(DAO):
         return True
 
     def removeAll(self, otherParams=None):
-        if(otherParams == None or not otherParams.has_key("message_type")):
+        if(otherParams == None or not "message_type" in otherParams):
             return False
         collection = self.dbManager.getCollection(self.collectionName)
 

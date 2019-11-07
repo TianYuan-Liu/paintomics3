@@ -18,7 +18,7 @@
 #  Technical contact paintomics@cipf.es
 #**************************************************************
 
-from PathwayGraphicalData import PathwayGraphicalData
+from .PathwayGraphicalData import PathwayGraphicalData
 from src.common.Util import Model
 from collections import defaultdict
 
@@ -93,7 +93,7 @@ class Pathway(Model):
     def getMetagenes(self):
         return self.metagenes
     def addMetagenes(self, omicName, metagene):
-        if not self.metagenes.has_key(omicName):
+        if not omicName in self.metagenes:
             self.metagenes[omicName] = []
         self.metagenes[omicName].append(metagene)
     def resetMetagenes(self, omicName):
@@ -155,7 +155,7 @@ class Pathway(Model):
     #******************************************************************************************************************
     def toBSON(self):
         bson = {}
-        for attr, value in self.__dict__.iteritems():
+        for attr, value in self.__dict__.items():
             if (attr != "graphicalOptions"):
                 bson[attr] = value
         return bson
