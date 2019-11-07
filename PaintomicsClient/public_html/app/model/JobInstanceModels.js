@@ -282,7 +282,7 @@ function JobInstance(jobID) {
 		this.getOmicsValues()[omicsValue.getID()] = omicsValue;
 	};
 	this.getMultiplePvaluesMethods = function() {
-		var multipleMethods = null;
+		var multipleMethods = [];
 
 		if (this.pathways.length && this.pathways[0].getAdjustedSignificanceValues) {
 			var omicPvalues = this.pathways[0].getAdjustedSignificanceValues();
@@ -293,7 +293,7 @@ function JobInstance(jobID) {
 		return multipleMethods;
 	};
 	this.getCombinedPvaluesMethods = function() {
-		var combinedMethods = null;
+		var combinedMethods = [];
 
 		if (this.pathways.length && this.pathways[0].getCombinedSignificanceValues) {
 			var omicPvalues = this.pathways[0].getCombinedSignificanceValues();

@@ -75,7 +75,7 @@ def adminServletGetInstalledOrganisms(request, response):
         from pymongo import MongoClient
 
         client = MongoClient(MONGODB_HOST, MONGODB_PORT)
-        databases = client.database_names()
+        databases = client.list_database_names()
 
         #****************************************************************
         # Step 2.FOR EACH INSTALLED DATABASE GET THE INFORMATION
@@ -253,7 +253,7 @@ def adminServletInstallOrganism(request, response, organism_code, ROOT_DIRECTORY
             try:
                 check_output(scriptArgs, stderr=STDOUT)
             except CalledProcessError as exc:
-                raise Exception("Error while calling DBManager download: Exit status " + str(exc.returncode) + ". Error message: " + exc.output)
+                raise Exception("Error while calling DBManager download: Exit status " + str(exc.returncode) + ". Error message: " + exc.output.decode('utf-8'))
             logging.info("FINISHED DBManager Download PROCESS.")
 
         # ****************************************************************
@@ -265,13 +265,13 @@ def adminServletInstallOrganism(request, response, organism_code, ROOT_DIRECTORY
             try:
                 check_output(scriptArgs, stderr=STDOUT)
             except CalledProcessError as exc:
-                raise Exception("Error while calling DBManager Install: Exit status " + str(exc.returncode) + ". Error message: " + exc.output)
+                raise Exception("Error while calling DBManager Install: Exit status " + str(exc.returncode) + ". Error message: " + exc.output.decode('utf-8'))
             logging.info("FINISHED DBManager Install PROCESS.")
 
         response.setContent({"success": True})
 
     except Exception as ex:
-        handleException(response, ex, __file__ , "adminServletUpdateOrganism")
+        handleException(response, ex, __file__ , "adminServletInstallOrganism")
 
     finally:
         return response
@@ -305,7 +305,7 @@ def adminServletRestoreData(request, response):
         try:
             check_output(scriptArgs, stderr=STDOUT)
         except CalledProcessError as exc:
-            raise Exception("Error while calling DBManager Restore: Exit status " + str(exc.returncode) + ". Error message: " + exc.output)
+            raise Exception("Error while calling DBManager Restore: Exit status " + str(exc.returncode) + ". Error message: " + exc.output.decode('utf-8'))
         logging.info("FINISHED DBManager Restore PROCESS.")
 
         response.setContent({"success": True})
@@ -322,7 +322,7 @@ def clearFailedData():
     for subdirname in os.listdir(dirname):
         # print path to all subdirectories first.
         if os.path.isdir(os.path.join(dirname, subdirname)) and os.path.isfile(os.path.join(dirname, subdirname) + "/DOWNLOADING"):
-                print "Removing " + os.path.join(dirname, subdirname)
+                print("Removing " + os.path.join(dirname, subdirname))
                 shutil.rmtree(os.path.join(dirname, subdirname))
 #----------------------------------------------------------------
 # USERS

@@ -1,7 +1,7 @@
 EXTERNAL_RESOURCES = {
                 "reactome"   : {
                         "details_url" :   "https://reactome.org/ContentService/data/query/enhanced/{}",
-                        "diagram_url" :   "https://reactomedev.oicr.on.ca/ContentService/exporter/diagram/{}.png?diagramProfile=Modern&quality=5&margin=0&analysisProfile=Standard&ehld=false",
+                        "diagram_url" :   "https://dev.reactome.org/ContentService/exporter/diagram/{}.png?diagramProfile=Modern&quality=5&margin=0&analysisProfile=Standard&ehld=false",
                         "nodes_url"   :   "https://reactome.org/download/current/diagram/{}.json",
                         "graph_url"   :   "https://reactome.org/download/current/diagram/{}.graph.json",
                         "entity_url"  :   "https://reactome.org/ContentService/data/participants/{}/referenceEntities",

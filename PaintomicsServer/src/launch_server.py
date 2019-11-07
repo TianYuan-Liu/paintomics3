@@ -5,7 +5,7 @@ import os
 isFirstLaunch = False
 
 if not os.path.isfile(os.path.dirname(os.path.realpath(__file__)) + "/conf/serverconf.py"):
-    print "Configuration not found, creating new settings file"
+    print("Configuration not found, creating new settings file")
     import shutil
     conf_dir = os.path.dirname(os.path.realpath(__file__)) + "/conf/"
     res_dir = os.path.dirname(os.path.realpath(__file__)) + "/resources/"
@@ -14,7 +14,7 @@ if not os.path.isfile(os.path.dirname(os.path.realpath(__file__)) + "/conf/serve
     shutil.copyfile(res_dir + "logging.cfg", conf_dir + "logging.cfg")
     isFirstLaunch = True
 else:
-    print "Configuration found, launching application"
+    print("Configuration found, launching application")
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + "/../")
 os.chdir(os.path.dirname(os.path.realpath(__file__)) + "/../")

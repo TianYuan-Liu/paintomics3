@@ -105,7 +105,7 @@ def fromMiRNAtoGenes_STEP1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID, EXAMPLE_FI
 
             dataFileName = omicName.replace(" ", "_").lower() + "_values.tab"
             logging.info("STEP1 - USING ALREADY SUBMITTED FILE (data file) " + EXAMPLE_FILES_DIR + dataFileName + " FOR  " + omicName)
-            relevantFileName =omicName.replace(" ", "_").lower() + "_relevant.tab"
+            relevantFileName = omicName.replace(" ", "_").lower() + "_relevant.tab"
             logging.info("STEP1 - USING ALREADY SUBMITTED FILE (relevant features file) " + EXAMPLE_FILES_DIR + relevantFileName + " FOR  " + omicName)
 
             jobInstance.addGeneBasedInputOmic({"omicName": omicName, "inputDataFile": EXAMPLE_FILES_DIR + dataFileName, "relevantFeaturesFile": EXAMPLE_FILES_DIR + relevantFileName,  "isExample" : True})
@@ -210,6 +210,8 @@ def fromMiRNAtoGenes_STEP2(jobInstance, userID, exampleMode, RESPONSE):
             "compressedFileName": fileNames[0],
             "mainOutputFileName":  fileNames[1],
             "secondOutputFileName":  fileNames[2],
+            "thirdOutputFileName": fileNames[3],
+            "fourthOutputFileName": fileNames[4],
             "description": jobInstance.description,
             "enrichment": jobInstance.enrichment
         })

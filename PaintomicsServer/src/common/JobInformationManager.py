@@ -40,8 +40,7 @@ from src.common.DAO.VisualOptionsDAO import VisualOptionsDAO
 
 from src.servlets.DataManagementServlet import saveFile
 
-class JobInformationManager:
-    __metaclass__ = Singleton
+class JobInformationManager(metaclass=Singleton):
 
     def __init__(self):
         logging.info("CREATING NEW INSTANCE FOR JobInformationManager...")
@@ -193,13 +192,15 @@ class JobInformationManager:
         dataType = ""
         userDirID = userID if userID is not None else "nologin"
         CLIENT_TMP_DIR = CLIENT_TMP_DIR + userDirID + "/inputData/"
+        savedFiles = {}
 
         for uploadedFileName in uploadedFiles.keys():
             #IF THE FILE IS NOT A RELEVANT FEATURES FILE
             fields = {}
             if (uploadedFileName is not None and uploadedFileName.find("_relevant") == -1  and uploadedFileName.find("_annotations_file") == -1   and uploadedFileName.find("_associations_file") == -1):
                 ##GET THE MATCHING TYPE: GENE OR COMPOUND
-                matchingType = formFields.get(uploadedFileName.replace("file","match_type"))
+                # Default matching type: gene
+                matchingType = formFields.get(uploadedFileName.replace("file","match_type"), "gene")
                 omicType = formFields.get(uploadedFileName.replace("file","omic_name"))  ##GET THE OMIC NAME: "Gene Expression", "Metabolomics", "Proteomics", .... (or user name)
 
                 fields["omicType"] = omicType
@@ -235,26 +236,66 @@ class JobInformationManager:
             if(origin == 'client'):
                 #THE NAME WHEN SAVING THE DATA
                 dataFileName = uploadedDataFile.filename
-                #IF NO FILE WAS PROVIDED, IGNORE
-                if(dataFileName == ''):
-                   logging.info("\tIGNORING " + omicType + ", EMPTY FILE OR NOT PROVIDED")
-                   continue
+                dataOmicId = uploadedDataFile.name
+
+                # If the file was previously saved, retrieve the final name.
+                if dataOmicId  in savedFiles:
+                    dataFileName = savedFiles.get(dataOmicId)
                 else:
-                    ##ELSE, SAVE THE FILE, GET THE NEW NAME IS ALREADY EXISTS
-                    if( fields["description"] == ""):
-                         fields["description"] = "File uploaded through the submission form."
+                    #IF NO FILE WAS PROVIDED, IGNORE
+                    if(dataFileName == ''):
+                       logging.info("\tIGNORING " + omicType + ", EMPTY FILE OR NOT PROVIDED")
+                       continue
+                    else:
+                        ##ELSE, SAVE THE FILE, GET THE NEW NAME IS ALREADY EXISTS
+                        if( fields["description"] == ""):
+                             fields["description"] = "File uploaded through the submission form."
 
-                    # If no user is provided, prepend the jobID to avoid possible conflictions
-                    if userID is None:
-                        dataFileName = jobInstance.getJobID() + '_' + dataFileName
+                        # If no user is provided, prepend the jobID to avoid possible conflictions
+                        if userID is None:
+                            dataFileName = jobInstance.getJobID() + '_' + dataFileName
 
-                    dataFileName = saveFile(userID, dataFileName, fields, uploadedDataFile, CLIENT_TMP_DIR)
+                        savedFiles[dataOmicId] = dataFileName = saveFile(userID, dataFileName, fields, uploadedDataFile, CLIENT_TMP_DIR)
             elif(origin == 'mydata'):
                 dataFileName = formFields.get(uploadedFileName.replace("file","filelocation")).replace("[MyData]/","")
                 logging.info("SAVE FILES  - USING ALREADY SUBMITTED FILE (data file) " + dataFileName + " FOR  " + omicType)
             elif(origin == 'inbuilt_gtf'):
                 dataFileName = EXAMPLE_FILES_DIR + "GTF/" + formFields.get(uploadedFileName.replace("file","filelocation")).replace("[inbuilt GTF files]/","")
                 logging.info("SAVE FILES  - USING ALREADY INBUILT GTF FILE " + dataFileName + " FOR  " + omicType)
+            elif('filelocation' in origin):
+                # The omic references the file of another omic
+                originName = origin.split('_', 1)[0]
+                omicOrigin = formFields.get(originName + "_origin")
+                dataOmicId = originName + "_file"
+
+                # If the file is a reference to the file of another omic, keep the reference to that file.
+                # However, as the final filename might be unique, we should save it first and keep a reference
+                # so as to not re-save it again on later loop iterations.
+                if(omicOrigin == 'client'):
+                    uploadedDataFile = uploadedFiles.get(originName + "_file")
+
+                    dataFileName = uploadedDataFile.filename
+
+                    # If the file was previously saved, retrieve the final name.
+                    if dataOmicId in savedFiles:
+                        dataFileName = savedFiles.get(uploadedDataFile)
+                    else:
+                        if (dataFileName == ''):
+                            logging.info("\tIGNORING " + omicType + ", EMPTY FILE OR NOT PROVIDED")
+                            continue
+                        else:
+                            ##ELSE, SAVE THE FILE, GET THE NEW NAME IF ALREADY EXISTS
+                            if (fields["description"] == ""):
+                                fields["description"] = "File referenced through the submission form (" + omicType + ")"
+
+                            # If no user is provided, prepend the jobID to avoid possible conflictions
+                            if userID is None:
+                                dataFileName = jobInstance.getJobID() + '_' + dataFileName
+
+                            savedFiles[dataOmicId] = dataFileName = saveFile(userID, dataFileName, fields, uploadedDataFile, CLIENT_TMP_DIR)
+
+                else:
+                    dataFileName = formFields.get(originName +  "_filelocation").replace("[MyData]/", "")
             else:
                 logging.info("\tIGNORING " + omicType + ", EMPTY FILE OR NOT PROVIDED")
                 continue
@@ -281,6 +322,8 @@ class JobInformationManager:
                 else:
                     relevantFileName = formFields.get(uploadedFileName.replace("file","relevant_filelocation")).replace("[MyData]/","")
                     logging.info("STEP1 - USING ALREADY SUBMITTED FILE (relevant features file) " + relevantFileName + " FOR  " + omicType)
+            else:
+                relevantFileName = None
 
             #SAVE THE ASSOCIATIONS FILE (IF ANY)
             if (uploadedAssociationDataFile is not None):
@@ -326,6 +369,8 @@ class JobInformationManager:
                     else:
                         relevantAssociationsFileName = formFields.get(uploadedFileName.replace("file", "relevant_associations_filelocation")).replace("[MyData]/", "")
                         logging.info("STEP1 - USING ALREADY SUBMITTED FILE (relevant associations file) " + relevantAssociationsFileName + " FOR  " + omicType)
+            else:
+                relevantAssociationsFileName = associationsFileName = None
 
             if(jobInstance != None):
                 if(matchingType.lower() == "gene"):

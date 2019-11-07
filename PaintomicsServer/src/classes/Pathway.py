@@ -18,8 +18,9 @@
 #  Technical contact paintomics@cipf.es
 #**************************************************************
 
-from PathwayGraphicalData import PathwayGraphicalData
+from .PathwayGraphicalData import PathwayGraphicalData
 from src.common.Util import Model
+from collections import defaultdict
 
 class Pathway(Model):
     #******************************************************************************************************************
@@ -42,6 +43,7 @@ class Pathway(Model):
         #self.combinedSignificancePvalue=1
         self.combinedSignificancePvalues = {}
         self.adjustedCombinedSignificanceValues = {}
+        self.masterRegulators = defaultdict(list)
         #GRAPHICAL INFORMATION
         self.graphicalOptions = None
 
@@ -91,11 +93,18 @@ class Pathway(Model):
     def getMetagenes(self):
         return self.metagenes
     def addMetagenes(self, omicName, metagene):
-        if not self.metagenes.has_key(omicName):
+        if not omicName in self.metagenes:
             self.metagenes[omicName] = []
         self.metagenes[omicName].append(metagene)
     def resetMetagenes(self, omicName):
         self.metagenes[omicName] = []
+
+    def setMasterRegulators(self, omic, masterRegulators):
+        self.masterRegulators[omic] = masterRegulators
+    def getMasterRegulators(self):
+        return self.masterRegulators
+    def addMasterRegulator(self, omic, masterRegulator):
+        self.masterRegulators[omic].add(masterRegulator)
 
     #OmicName -> [totalFeatures, totalRelevantFeatures, pValue]
     def setSignificanceValues(self, significanceValues):
@@ -146,7 +155,7 @@ class Pathway(Model):
     #******************************************************************************************************************
     def toBSON(self):
         bson = {}
-        for attr, value in self.__dict__.iteritems():
+        for attr, value in self.__dict__.items():
             if (attr != "graphicalOptions"):
                 bson[attr] = value
         return bson

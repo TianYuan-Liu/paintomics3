@@ -33,9 +33,10 @@ from src.common.bioscripts.miRNA2Target import run as run_miRNA2Target
 from os import path as os_path, mkdir as os_mkdir
 from csv import reader as csv_reader
 from random import randint
+from collections import defaultdict
 
 import shutil
-import time
+
 
 from src.conf.serverconf import MAX_NUMBER_FEATURES
 
@@ -114,8 +115,8 @@ class MiRNA2GeneJob(Job):
         if(inputOmic.get("isExample", False) == True):
             return nConditions, error
         else:
-            valuesFileName = self.getInputDir() + valuesFileName
-            relevantFileName = self.getInputDir() + relevantFileName
+            valuesFileName = "{path}/{file}".format(path=self.getInputDir(), file=valuesFileName)
+            relevantFileName = "{path}/{file}".format(path=self.getInputDir(), file=relevantFileName)
 
         #*************************************************************************
         # STEP 1. VALIDATE THE RELEVANT FEATURES FILE
@@ -222,10 +223,17 @@ class MiRNA2GeneJob(Job):
         inputRef = self.getReferenceInputs()[0]
         referenceFile = self.getReferenceInputs()[0].get("inputDataFile")
         if (inputRef.get("isExample", False) == False):
-            referenceFile = self.getInputDir() + referenceFile
+            referenceFile = "{path}/{file}".format(path=self.getInputDir(), file=referenceFile)
+
+        relevantReferenceFile = self.getReferenceInputs()[0].get("inputDataFile", None)
+        if (inputRef.get("isExample", False) == False):
+            relevantReferenceFile = "{path}/{file}".format(path=self.getInputDir(), file=relevantReferenceFile)
 
         if not os_path.isfile(referenceFile):
             raise Exception("Reference file not found.")
+
+        if relevantReferenceFile and not os_path.isfile(relevantReferenceFile):
+            raise Exception("Relevant reference file not found.")
 
         geneDataInputs = self.getGeneBasedInputOmics()
 
@@ -239,10 +247,10 @@ class MiRNA2GeneJob(Job):
             geneExpressionFile = RNAinputOmic.get("inputDataFile")
 
         if(miRNAinputOmic.get("isExample", False) == False):
-            dataFile = self.getInputDir()+  dataFile
-            relevantFile = self.getInputDir()+ relevantFile
+            dataFile = "{path}/{file}".format(path=self.getInputDir(), file=dataFile)
+            relevantFile = "{path}/{file}".format(path=self.getInputDir(), file=relevantFile)
             if geneExpressionFile != None:
-                geneExpressionFile = self.getInputDir() + geneExpressionFile
+                geneExpressionFile = "{path}/{file}".format(path=self.getInputDir(), file=geneExpressionFile)
 
         if not os_path.isdir(self.getTemporalDir()):
             os_mkdir(self.getTemporalDir())
@@ -251,7 +259,7 @@ class MiRNA2GeneJob(Job):
 
         #STEP 2. CALL TO miRNA2Target SCRIPT AND GENERATE ASSOCIATION BETWEEN miRNAS AND TARGET GENES
         logging.info("STARTING miRNA2Target PROCESS.")
-        run_miRNA2Target(referenceFile, dataFile, geneExpressionFile, tmpFile, self.score_method)
+        run_miRNA2Target(referenceFile, relevantReferenceFile, dataFile, geneExpressionFile, tmpFile, self.score_method)
         logging.info("STARTING miRNA2Target PROCESS...Done")
 
         #STEP 3. PARSE RELEVANT FILE
@@ -259,12 +267,25 @@ class MiRNA2GeneJob(Job):
         relevantMiRNAS = self.parseSignificativeFeaturesFile(relevantFile, isBedFormat=False)
         logging.info("PROCESSING RELEVANT FEATURES FILE...DONE")
 
+        # STEP 3.2. PARSE RELEVANT ASSOCIATIONS FILE
+        relevantAssociations = {}
+
+        if relevantReferenceFile:
+            logging.info("PROCESSING RELEVANT ASSOCIATIONS FILE...")
+            relevantAssociations = self.parseSignificativeFeaturesFile(relevantReferenceFile, isBedFormat=False)
+            logging.info("PROCESSING RELEVANT ASSOCIATIONS FILE...DONE")
+
         #STEP 4. PARSE GENERATED TEMPORAL FILE, GET THE MIRNAS, TARGET GENES AND QUANTIFICATION
         logging.info("PROCESSING miRNA2Target OUTPUT...")
+
+        # If no relevant associations file was provided, the script must generate one using
+        # the correlation settings.
+        useCorrelation = relevantReferenceFile is None
+
         if os_path.isfile(tmpFile):
              with open(tmpFile, 'rU') as inputDataFile:
                 mirnaID = geneID = score = methodsHasChanged = score_type = sortedScores = None
-                scoresTable = {}
+                scoresTable = defaultdict(list)
 
                 csvReader = csv_reader(inputDataFile, delimiter="\t")
 
@@ -278,30 +299,43 @@ class MiRNA2GeneJob(Job):
 
                 for line in csvReader:
                     #STEP 5.1 GET THE mirna ID, THE ASSOCIATED GENE ID AND THE QUANTIFICATION VALUES
-                    mirnaID   = line[0]
-                    geneID    = line[1]
+                    mirnaID    = line[0]
+                    geneID     = line[1]
                     score      = float(line[2])
                     score_type = line[3]
-                    values    =  map(float, line[4:])
+                    values     =  map(float, line[4:])
 
                     #EVEN WHEN THE USER HAS CHOOSE THE OPTION "FC", if the conditions do no allow to calculate the
                     #correlation, the script will calculate the FC
-                    if score_type != "fc" and self.selection_method == "negative_correlation":
-                        score *= -1  #INVERT VALUES
-                    elif score_type != "fc" and self.selection_method == "abs_correlation":
-                        score = abs(score)
-                    #TODO: SIMILAR FC SELECTION
+                    isRelevant = mirnaID.lower() in relevantMiRNAS
+                    isRelevantAssociation = False
 
-                    isRelevant = (relevantMiRNAS.has_key(mirnaID.lower()) and score > self.cutoff)
+                    if useCorrelation:
+                        if score_type != "fc" and self.selection_method == "negative_correlation":
+                            score *= -1  #INVERT VALUES
+                        elif score_type != "fc" and self.selection_method == "abs_correlation":
+                            score = abs(score)
+                        #TODO: SIMILAR FC SELECTION
 
-                    #STEP 5.2 FILTER MIRNAS
-                    #IF THE OPTION "ONLY RELEVANTS" WAS SELECTED, IGNORE ENTRY
-                    if self.report == "DE" and not isRelevant:
-                        continue
+                        # Only those correlation with a score higher than the specified cutoff
+                        # are considered relevant.
+                        isRelevantAssociation = (score > self.cutoff)
 
-                    #FILTER BY SELECTION METHODS, IF CORRELATION OR FC IS LOWER THAN THE CUTOFF, IGNORE ENTRY
-                    if score < self.cutoff:
-                        continue
+                        #STEP 5.2 FILTER MIRNAS
+                        #IF THE OPTION "ONLY RELEVANTS" WAS SELECTED, IGNORE ENTRY
+
+                        # Add an extra check to ensure that the regulator is inside the list of
+                        # relevant regulators (depends on configuration options).
+                        if self.report == "DE":# and not isRelevant:
+                            isRelevantAssociation = isRelevantAssociation and isRelevant
+                            #continue
+
+                        #FILTER BY SELECTION METHODS, IF CORRELATION OR FC IS LOWER THAN THE CUTOFF, IGNORE ENTRY
+                        # if score < self.cutoff:
+                        #     isRelevantAssociation = False
+                        #     #continue
+                    else:
+                        isRelevantAssociation = geneID + ':::' + mirnaID in relevantAssociations
 
                     #STEP 5.3 CREATE A NEW OMIC VALUE WITH ROW DATA
                     omicValueAux = OmicValue(mirnaID)
@@ -309,19 +343,19 @@ class MiRNA2GeneJob(Job):
                     omicValueAux.setOriginalName(mirnaID)
                     omicValueAux.setValues(values)
                     omicValueAux.setRelevant(isRelevant)
+                    omicValueAux.setRelevantAssociation(isRelevantAssociation)
 
                     #STEP 5.4 CREATE A NEW TEMPORAL GENE INSTANCE
                     geneAux = Gene(geneID)
-                    geneAux.setName(line[0])
+                    geneAux.setName(mirnaID)
                     geneAux.addOmicValue(omicValueAux)
 
                     #STEP 5.5 ADD THE TEMPORAL GENE INSTANCE TO THE LIST OF GENES, IF ALREADY EXISTS, MERGE
                     self.addInputGeneData(geneAux)
 
                     #STEP 5.6 ADD THE OMIC VALUE TO THE LIST, FOR FURTHER ORDERING
-                    if not geneID in scoresTable:
-                        scoresTable[geneID] = []
                     scoresTable[geneID].append((score, omicValueAux))
+
                 logging.info("PROCESSING miRNA2Target OUTPUT...DONE")
 
                 # Abort the process to let the user know that there were no results.
@@ -337,18 +371,22 @@ class MiRNA2GeneJob(Job):
                 filePrefix = '' if self.getUserID() is not None else self.getJobID() + '_'
                 randomSeed = str(randint(0, 1000))
                 genesToMiRNAFile = open(self.getTemporalDir() + '/' + filePrefix + 'genesToMiRNAFile.tab', 'w')
-                mirna2genesOutput = open(self.getTemporalDir() + '/' + filePrefix + "miRNA2Gene_output_" + self.date + "_" + randomSeed +  ".tab", 'w')
-                mirna2genesRelevant = open(self.getTemporalDir() + '/' + filePrefix + "miRNA2Gene_relevant_" + self.date + "_" + randomSeed + ".tab", 'w')
+                regulator2genesOutput = open(self.getTemporalDir() + '/' + filePrefix + "regulator2Gene_output_" + self.date + "_" + randomSeed +  ".tab", 'w')
+                regulator2genesRelevant = open(self.getTemporalDir() + '/' + filePrefix + "regulator2Gene_relevant_" + self.date + "_" + randomSeed + ".tab", 'w')
+
+                # Associations files
+                regulatorAssociations = open(self.getTemporalDir() + '/' + filePrefix + "regulator_associations" + self.date + "_" + randomSeed + ".tab", 'w')
+                regulatorRelevantAssociations = open(self.getTemporalDir() + '/' + filePrefix + "regulator_relevant_associations" + self.date + "_" + randomSeed + ".tab", 'w')
 
                 # PRINT HEADER
                 genesToMiRNAFile.write("# Gene name\tmiRNA ID\tDE\tScore\tSelection\n")
                 #TODO: RE-ENABLE THIS CODE
-                mirna2genesOutput.write("# Gene name\t"+ header + "\n")
+                regulator2genesOutput.write("# Gene name\t"+ header + "\n")
                 #mirna2genesOutput.write("# Gene name\tmiRNA ID\t"+ header + "\n")
-                mirna2genesRelevant.write("# Gene name\tmiRNA ID\n")
+                regulator2genesRelevant.write("# Gene name\tmiRNA ID\n")
 
                 logging.info("ORDERING miRNAS BY CORRELATION / FC...")
-                for geneID, gene in self.getInputGenesData().iteritems():
+                for geneID, gene in self.getInputGenesData().items():
                     #GET ALL THE miRNAs AND SORT
                     sortedScores = sorted(scoresTable[geneID], key=lambda omicValue: omicValue[0], reverse=True)
 
@@ -370,40 +408,68 @@ class MiRNA2GeneJob(Job):
                         #TODO: RE-ENABLE THIS CODE
                         #mirna2genesOutput.write(lineAux + '\t'.join(map(str, omicValue.getValues())) + "\n")
                         # mirna2genesOutput.write(geneID + "\t" + '\t'.join(map(str, omicValue.getValues())) + "\n")
-                        mirna2genesOutput.write(":::".join([geneID, omicValue.getOriginalName()]) + "\t" + '\t'.join(map(str, omicValue.getValues())) + "\n")
+                        regulator2genesOutput.write(":::".join([geneID, omicValue.getOriginalName()]) + "\t" + '\t'.join(map(str, omicValue.getValues())) + "\n")
 
+                        # Associations file (trimmed down version including only those regulators present on
+                        # the values file).
+                        regulatorAssociations.write(geneID + "\t" + omicValue.getOriginalName() + "\n")
+
+                        # Relevant regulators file (not associations)
                         if omicValue.isRelevant():
                             #WRITE RESULTS TO mirna2genesRelevant FILE -->   gen_id mirna
-                            mirna2genesRelevant.write(geneID + "\t" + omicValue.getOriginalName() + "\n")
+                            regulator2genesRelevant.write(geneID + "\t" + omicValue.getOriginalName() + "\n")
+
+                        # Relevant associations file
+                        if omicValue.isRelevantAssociation():
+                            #WRITE RESULTS TO mirna2genesRelevant FILE -->   gen_id mirna
+                            regulatorRelevantAssociations.write(geneID + "\t" + omicValue.getOriginalName() + "\n")
 
                 genesToMiRNAFile.close()
-                mirna2genesOutput.close()
-                mirna2genesRelevant.close()
+                regulator2genesOutput.close()
+                regulator2genesRelevant.close()
+                regulatorAssociations.close()
+                regulatorRelevantAssociations.close()
 
                 #STEP 7. GENERATE THE COMPRESSED FILE WITH RESULTS, COPY THE mirna2genesOutput FILE AT INPUT DIR AND CLEAN TEMPORAL FILES
                 #COMPRESS THE RESULTING FILES AND CLEAN TEMPORAL DATA
                 #TODO: REMOVE THE genesToMiRNAFile
                 logging.info("COMPRESSING RESULTS...")
-                fileName = "mirna2genes_" + self.date
+                fileName = "regu2genes_" + self.date
+
                 shutil.make_archive(self.getOutputDir() + fileName, "zip", self.getTemporalDir() + "/")
+
                 logging.info("COMPRESSING RESULTS...DONE")
 
                 fields = {
                     "omicType" : miRNAinputOmic.get("omicName"),
-                    "dataType" : miRNAinputOmic.get("omicName").replace("data","quantification"),
-                    "description" : "File generated using miRNA2Target tool (miRNA2Target);" + self.getJobDescription(True, dataFile, relevantFile, referenceFile, geneExpressionFile)
+                    "dataType" : miRNAinputOmic.get("omicName").replace("data", "quantification"),
+                    "description" : "File generated using regu2Target tool (regu2Target);" + self.getJobDescription(True, dataFile, relevantFile, referenceFile, geneExpressionFile)
                 }
-                mainOutputFileName = copyFile(self.getUserID(), os_path.split(mirna2genesOutput.name)[1], fields,self.getTemporalDir() +  "/", self.getInputDir())
+                mainOutputFileName = copyFile(self.getUserID(), os_path.split(regulator2genesOutput.name)[1], fields, self.getTemporalDir() +  "/", self.getInputDir())
 
                 fields = {
                     "omicType" : miRNAinputOmic.get("omicName"),
                     "dataType" : "Relevant Genes list",
-                    "description" : "File generated using miRNA2Target tool (miRNA2Target);"  + self.getJobDescription()
+                    "description" : "File generated using regu2Target tool (regu2Target);"  + self.getJobDescription()
                 }
-                secondOutputFileName = copyFile(self.getUserID(), os_path.split(mirna2genesRelevant.name)[1], fields, self.getTemporalDir() + "/", self.getInputDir())
+                secondOutputFileName = copyFile(self.getUserID(), os_path.split(regulator2genesRelevant.name)[1], fields, self.getTemporalDir() + "/", self.getInputDir())
+
+                fields = {
+                    "omicType": miRNAinputOmic.get("omicName"),
+                    "dataType": "Associations file",
+                    "description": "Associations file filtered using regu2Target tool (regu2Target);" + self.getJobDescription()
+                }
+                thirdOutputFileName = copyFile(self.getUserID(), os_path.split(regulatorAssociations.name)[1], fields, self.getTemporalDir() + "/", self.getInputDir())
+
+                fields = {
+                    "omicType": miRNAinputOmic.get("omicName"),
+                    "dataType": "Relevant associations file",
+                    "description": "Relevant associations generated using regu2Target tool (regu2Target);" + self.getJobDescription()
+                }
+                fourthOutputFileName = copyFile(self.getUserID(), os_path.split(regulatorRelevantAssociations.name)[1], fields, self.getTemporalDir() + "/", self.getInputDir())
 
                 #TODO: REMOVE FILES IF EXCEPTION
                 inputDataFile.close()
 
                 self.cleanDirectories()
-                return [fileName + ".zip", mainOutputFileName, secondOutputFileName]
+                return [fileName + ".zip", mainOutputFileName, secondOutputFileName, thirdOutputFileName, fourthOutputFileName]

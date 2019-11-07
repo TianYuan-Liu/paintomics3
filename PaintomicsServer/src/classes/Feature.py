@@ -72,7 +72,7 @@ class Feature(Model):
     def setMatchingDB(self, matchingDB):
         self.matchingDB = matchingDB
     def getMatchingDB(self):
-        return self.matchingDB
+        return self.matchingDB if self.matchingDB != '' else 'KEGG'
 
     #******************************************************************************************************************
     # OTHER FUNCTIONS
@@ -94,7 +94,7 @@ class Feature(Model):
 
     def toBSON(self):
         bson = {}
-        for attr, value in self.__dict__.iteritems():
+        for attr, value in self.__dict__.items():
             if (attr == "omicsValues"):
                 bson[attr] = []
                 for elem in value:

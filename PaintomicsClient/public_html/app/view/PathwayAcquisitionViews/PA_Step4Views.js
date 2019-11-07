@@ -3202,7 +3202,7 @@ function PA_Step4GlobalHeatmapView() {
 
 			var shownameValue = omicsValues[i].inputName != omicsValues[i].originalName && omicsValues[i].originalName !== undefined ?
 				omicsValues[i].originalName + ": " + omicsValues[i].inputName :
-				omicsValues[i].inputName
+				omicsValues[i].inputName;
 
 				var relevantSymbols = "";
 
@@ -3616,6 +3616,7 @@ function PA_Step4DetailsView() {
 	};
 
 	this.updateObserver = function () {
+		var me = this;
 		var featureSetElems = this.getModel().getFeatures();
 		var metagenesSetElems = this.getModel().getMetagenes();
 		var featureType = featureSetElems[0].getFeature().getFeatureType();
@@ -3676,7 +3677,7 @@ function PA_Step4DetailsView() {
 			divId = omicNames[i].replace(" ", "_");
 			htmlCode =
 			"<div class='contentbox'>" +
-			"  <h3>" + omicNames[i].replace("#", " ") + "</h3>" +
+			"  <h3>" + omicNames[i].replace("#", " ") + "<span><input type='checkbox' id='" + divId + "_cb_relevant' value='"+ omicNames[i] +"'/>Only relevant</span></h3>" +
 			"  <div class='PA_step5_heatmapContainer' id='" + divId + "_heatmapContainer'  style='height: " + ((entriesTable[omicNames[i]].length * 30) + 100) + "px'><i class='fa fa-cog fa-spin'></i> Loading..</div>" +
 			"  <div class='PA_step5_plotContainer' id='" + divId + "_plotContainer'  style='width:" + divWidth + "px;height: " + ((entriesTable[omicNames[i]].length * 30) + 100) + "px'><i class='fa fa-cog fa-spin'></i> Loading..</div>" +
 			"</div>";
@@ -3702,6 +3703,26 @@ function PA_Step4DetailsView() {
 		}
 
 		$(".featureSetOptionsToolbar").next("h2").html(featureType + " family overview");
+
+		// Link event individually to save heatmap reference
+		$("div.contentbox h3 :checkbox").change(function() {
+			var omicName = $(this).val();
+			var divId = omicName.replace(" ", "_");
+			var onlyRelevants = $(this).is(":checked");
+	
+			// Highcharts does not automatically hide Y labels when hiding series, so it is easier and faster
+			// to recreate the whole graphic.
+			var omicValues = entriesTable[omicName];
+
+			if (onlyRelevants) {
+				omicValues = omicValues.filter(x => x.isRelevant || x.isRelevantAssociation);
+			}
+
+			$('#' + divId + "_heatmapContainer").height(omicValues.length * 30 + 100);
+
+			me.generateHeatmap(divId + "_heatmapContainer", omicName.split("#")[0], omicValues, me.getParent("PA_Step4PathwayView").getDataDistributionSummaries(), me.getParent("PA_Step4PathwayView").getVisualOptions());
+			me.generatePlot(divId + "_plotContainer", omicName.split("#")[0], omicValues, me.getParent("PA_Step4PathwayView").getDataDistributionSummaries(), divId + "_plotlegendContainer", me.getParent("PA_Step4PathwayView").getVisualOptions());
+		});
 
 		var components = [];
 		for (var i in this.items) {
@@ -3767,10 +3788,18 @@ function PA_Step4DetailsView() {
 			"^": '<i class="relevantAssociationFeature"></i>'
 		};
 
+		var clusterize = omicsValues.length > 5 ? {
+			algorithm: "hierarchical",
+			distance: "euclidean",
+			linkage: "complete",
+			dendogram: false 
+		} : false;
+
 		var heatmap = new Highcharts.Chart({
 			chart: {type: 'heatmap', renderTo: targetID},
 			heatmapSelector: {color: '#000', lineWidth: 3},
 			title: null, legend: {enabled: false}, credits: {enabled: false},
+			clusterize: clusterize,
 			tooltip: {
 				borderColor: "#333",
 				formatter: function () {

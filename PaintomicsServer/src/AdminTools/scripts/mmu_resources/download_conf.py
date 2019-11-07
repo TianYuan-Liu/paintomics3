@@ -30,12 +30,12 @@ EXTERNAL_RESOURCES = {
                     "description"   :    "Source: UniProt idmapping_selected.tab. Downloaded from UniProt FTP. Tab-delimited table which includes the multiple mappings between UniProt Accession and external databases."
                     }
                 ],
-                 "vega"   :   [
+                "reactome": [
                     {
-                    "url"           :   "http://www.ensembl.org/biomart/martservice/",
-                    "file"          :   "mmu_resources/vega_mapping.xml",
-                    "output"        :   "vega_mapping.list",
-                    "description"   :    "Source: Ensembl Vega databases. Downloaded from Biomart."
+                        "url": "https://reactome.org/ContentService/data/pathways/top/10090",
+                        "file": "",
+                        "output": "reactome_top.json",
+                        "description": "Source: Reactome top pathways in JSON. It contains the main pathways to be used to retrieve the others.."
                     }
                 ],
         }

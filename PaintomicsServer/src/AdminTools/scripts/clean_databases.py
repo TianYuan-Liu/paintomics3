@@ -49,7 +49,7 @@ def cleanDatabases(force=False):
             users_to_fix.append(user_id)
 
         force_remove = False
-        if user.has_key("is_guest") and user["is_guest"] == True and checkRemoveGuestUser(user, user_id):
+        if "is_guest" in user and user["is_guest"] == True and checkRemoveGuestUser(user, user_id):
             # If guest user, check if should be removed
             users_to_remove.append(user_id)
             force_remove = True
@@ -81,7 +81,7 @@ def cleanDatabases(force=False):
             return
 
     # STEP 4. REMOVE ALL OUTDATED JOBS (+ FEATURES AND FILES)
-    for user_id, jobs_to_remove in jobs_to_remove.iteritems():
+    for user_id, jobs_to_remove in jobs_to_remove.items():
         for job_id in jobs_to_remove:
             removeJobByJobID(connection, user_id, job_id)
 
@@ -104,7 +104,7 @@ def cleanDatabases(force=False):
         removeDirectoryByUserID(user_id)
 
     # STEP 8. SEND REMINDER E-MAILS
-    for user_id, jobs_to_remind in jobs_to_remind.iteritems():
+    for user_id, jobs_to_remind in jobs_to_remind.items():
         for job_id in jobs_to_remind:
             remindJobByJobID(connection, user_id, job_id, ROOT_DIRECTORY)
 
@@ -251,7 +251,7 @@ def rebuildIndexes(connection):
         connection[MONGODB_DATABASE][db].reindex()
 
 def log(msg):
-    print msg
+    print(msg)
     frame,filename,line_number,function_name,lines,index=inspect.getouterframes(inspect.currentframe())[1]
     line=lines[0]
     indentation_level=line.find(line.lstrip())
@@ -293,11 +293,11 @@ def confirm(prompt=None, resp=False):
         prompt = '%s [%s]|%s: ' % (prompt, 'n', 'y')
 
     while True:
-        ans = raw_input(prompt)
+        ans = input(prompt)
         if not ans:
             return resp
         if ans not in ['y', 'Y', 'n', 'N']:
-            print 'please enter y or n.'
+            print('please enter y or n.')
             continue
         if ans == 'y' or ans == 'Y':
             return True

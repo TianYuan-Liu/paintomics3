@@ -77,10 +77,14 @@ function Application() {
         }
 
         /* If the job is not on the last step, avoid loading it from session */
-        if (URLjobID !== null && (jobInstanceModel.getJobID() == null || jobInstanceModel.getStepNumber() == 2)){
-          this.getController("JobController").recoverPAJobHandler(URLjobID);
-        } else {
-          this.getController("JobController").showJobInstance(jobInstanceModel);
+        var loginDialog = Ext.getCmp('userViewsDialog');
+
+        if (loginDialog == undefined) {
+            if (URLjobID !== null && (jobInstanceModel.getJobID() == null || jobInstanceModel.getStepNumber() == 2)){
+            this.getController("JobController").recoverPAJobHandler(URLjobID);
+            } else {
+            this.getController("JobController").showJobInstance(jobInstanceModel);
+            }
         }
 
         if (Ext.util.Cookies.get("silence") != null) {

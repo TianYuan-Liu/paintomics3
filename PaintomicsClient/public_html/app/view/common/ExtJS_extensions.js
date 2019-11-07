@@ -429,7 +429,7 @@ Ext.define('Ext.grid.LiveSearchGridPanel', {
 
         me.view.refresh();
         me.store.addFilter({id: "database", filterFn: function(item) {
-          return(db_cboxes.indexOf(item.raw.source) !== -1);
+          return(db_cboxes.indexOf(item.get("source")) !== -1 && item.get("visible") == true);
         }, root: 'data'});
         me.getSelectionModel().deselectAll();
     },

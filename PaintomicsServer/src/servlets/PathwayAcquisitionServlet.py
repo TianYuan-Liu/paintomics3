@@ -20,7 +20,6 @@
 import logging
 import logging.config
 
-import cairo
 import cairosvg
 from time import time
 
@@ -89,13 +88,16 @@ def pathwayAcquisitionStep1_PART1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID, EXA
         jobInstance.initializeDirectories()
         logging.info("STEP1 - NEW JOB SUBMITTED " + jobInstance.getJobID())
 
+        # Make sure to read the POST data always. UWSGI will fail if
+        # not.
+        uploadedFiles = REQUEST.files
+        formFields = REQUEST.form
+
         #****************************************************************
         # Step 3. SAVE THE UPLOADED FILES
         #****************************************************************
         if(exampleMode == False):
             logging.info("STEP1 - FILE UPLOADING REQUEST RECEIVED")
-            uploadedFiles  = REQUEST.files
-            formFields   = REQUEST.form
             jobInstance.description=""
             jobInstance.setName(formFields.get("jobDescription", "")[:100])
             specie = formFields.get("specie") #GET THE SPECIES NAME
@@ -118,11 +120,11 @@ def pathwayAcquisitionStep1_PART1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID, EXA
             logging.info("STEP1 - COPYING FILES....")
 
             exampleOmics = {"Gene expression": 'genes', "Metabolomics": 'features', "Proteomics": 'features', "miRNA-seq": 'genes', "DNase-seq": 'genes'}
-            for omicName, enrichment in exampleOmics.iteritems():
+            for omicName, enrichment in exampleOmics.items():
                 dataFileName = omicName.replace(" ", "_").replace("-seq", "").lower() + "_values.tab"
                 logging.info("STEP1 - USING ALREADY SUBMITTED FILE (data file) " + EXAMPLE_FILES_DIR + dataFileName + " FOR  " + omicName)
 
-                relevantFileName =omicName.replace(" ", "_").replace("-seq", "").lower() + "_relevant.tab"
+                relevantFileName = omicName.replace(" ", "_").replace("-seq", "").lower() + "_relevant.tab"
                 logging.info("STEP1 - USING ALREADY SUBMITTED FILE (relevant features file) " + EXAMPLE_FILES_DIR + relevantFileName + " FOR  " + omicName)
 
                 if(["Metabolomics"].count(omicName)):
@@ -132,7 +134,7 @@ def pathwayAcquisitionStep1_PART1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID, EXA
 
             specie = "mmu"
             jobInstance.setOrganism(specie)
-            jobInstance.setDatabases(['KEGG'])
+            jobInstance.setDatabases(['KEGG', 'Reactome']) # TODO: cambiar
         else:
             raise NotImplementedError
 
@@ -216,7 +218,7 @@ def pathwayAcquisitionStep1_PART2(jobInstance, userID, exampleMode, RESPONSE):
             "organism" : jobInstance.getOrganism(),
             "jobID": jobInstance.getJobID(),
             "userID": jobInstance.getUserID(),
-            "matchedMetabolites": map(lambda foundFeature: foundFeature.toBSON(), matchedMetabolites),
+            "matchedMetabolites": list(map(lambda foundFeature: foundFeature.toBSON(), matchedMetabolites)),
             "geneBasedInputOmics": jobInstance.getGeneBasedInputOmics(),
             "compoundBasedInputOmics": jobInstance.getCompoundBasedInputOmics(),
             "databases": jobInstance.getDatabases(),
@@ -283,7 +285,7 @@ def pathwayAcquisitionStep2_PART1(REQUEST, RESPONSE, QUEUE_INSTANCE, ROOT_DIRECT
         selectedCompounds= REQUEST.form.getlist("selectedCompounds[]")
         # Retrieve the number of cluster on a per omic basis
         # Note: this will contain the omic name transformed to remove spaces and special chars
-        clusterNumber = {key.replace("clusterNumber:", ""): value for key, value in formFields.iteritems() if key.startswith("clusterNumber:")}
+        clusterNumber = {key.replace("clusterNumber:", ""): value for key, value in formFields.items() if key.startswith("clusterNumber:")}
 
         #************************************************************************
         # Step 3. Queue job
@@ -379,7 +381,7 @@ def pathwayAcquisitionStep2_PART2(jobID, userID, selectedCompounds, clusterNumbe
         # Step 5. Update the response content
         #************************************************************************
         matchedPathwaysJSONList = []
-        for matchedPathway in jobInstance.getMatchedPathways().itervalues():
+        for matchedPathway in jobInstance.getMatchedPathways().values():
             matchedPathwaysJSONList.append(matchedPathway.toBSON())
 
         RESPONSE.setContent({
@@ -515,10 +517,10 @@ def pathwayAcquisitionRecoverJob(request, response, QUEUE_INSTANCE):
 
         logging.info("RECOVER_JOB - JOB " + jobInstance.getJobID() + " LOADED SUCCESSFULLY.")
 
-        matchedCompoundsJSONList = map(lambda foundFeature: foundFeature.toBSON(), jobInstance.getFoundCompounds())
+        matchedCompoundsJSONList = list(map(lambda foundFeature: foundFeature.toBSON(), jobInstance.getFoundCompounds()))
 
         matchedPathwaysJSONList = []
-        for matchedPathway in jobInstance.getMatchedPathways().itervalues():
+        for matchedPathway in jobInstance.getMatchedPathways().values():
             matchedPathwaysJSONList.append(matchedPathway.toBSON())
         logging.info("RECOVER_JOB - GENERATING PATHWAYS INFORMATION...DONE")
 
@@ -581,7 +583,7 @@ def pathwayAcquisitionSaveImage(request, response):
         jobInstance = JobInformationManager().loadJobInstance(jobID)
 
         svgData = request.form.get("svgCode")
-        fileName = "paintomics_" + request.form.get("fileName").replace(" ", "_") + "_" + jobID
+        fileName = "paintomics_" + request.form.get("fileName").replace(" ", "_").replace("/", "_") + "_" + jobID
         fileFormat = request.form.get("format")
 
         # userID = jobInstance.getUserID()
@@ -767,7 +769,7 @@ def pathwayAcquisitionMetagenes_PART2(ROOT_DIRECTORY, userID, savedJobInstance, 
         JobInformationManager().storePathways(savedJobInstance)
 
         matchedPathwaysJSONList = []
-        for matchedPathway in savedJobInstance.getMatchedPathways().itervalues():
+        for matchedPathway in savedJobInstance.getMatchedPathways().values():
             matchedPathwaysJSONList.append(matchedPathway.toBSON())
 
         RESPONSE.setContent({
@@ -803,12 +805,12 @@ def pathwayAcquisitionAdjustPvalues(request, response):
             newAdjustedStoufferPvalues = defaultdict(dict)
 
             # Iterate over each database (adjusting it independently)
-            for db_name, db_pvalues in pvalues.iteritems():
+            for db_name, db_pvalues in pvalues.items():
                 # Each pathway has a different set of matching omics and thus, Stouffer weights.
                 # The new Stouffer p-value will be computed for each pathway, even those that are currently hidden.
-                for pathway_id, pathway_pvalues in db_pvalues.iteritems():
+                for pathway_id, pathway_pvalues in db_pvalues.items():
                     # Select those with a proper p-value number and present in Stouffer weights
-                    valid_pvalues = {omic: pvalue for omic, pvalue in pathway_pvalues.iteritems() if pvalue != "-" and omic in newStoufferWeights.keys()}
+                    valid_pvalues = {omic: pvalue for omic, pvalue in pathway_pvalues.items() if pvalue != "-" and omic in newStoufferWeights.keys()}
 
                     # Make sure to pass the Stouffer weights in the same order as the p-values
                     newStoufferValue = calculateStoufferCombinedPvalue(valid_pvalues.values(), [newStoufferWeights[omicName] for omicName in valid_pvalues.keys()])
@@ -816,7 +818,7 @@ def pathwayAcquisitionAdjustPvalues(request, response):
                     newStoufferPvalues[db_name][pathway_id] = newStoufferValue
 
                 # Adjust the new Stouffer p-values passing only those pathways that are currently visible
-                newAdjustedStoufferPvalues[db_name] = adjustPvalues({pathway: pvalue for pathway, pvalue in newStoufferPvalues[db_name].iteritems() if pathway in visiblePathways})
+                newAdjustedStoufferPvalues[db_name] = adjustPvalues({pathway: pvalue for pathway, pvalue in newStoufferPvalues[db_name].items() if pathway in visiblePathways})
 
             response.setContent({
                 "success": True,
@@ -830,16 +832,16 @@ def pathwayAcquisitionAdjustPvalues(request, response):
             # Iterate over each database (adjusting it independently)
             adjustedPvaluesByOmic = defaultdict()
 
-            for db_name, db_pvalues in pvalues.iteritems():
+            for db_name, db_pvalues in pvalues.items():
                 pvaluesByOmic = defaultdict(dict)
 
-                for pathway, pathwayPvalues in db_pvalues.iteritems():
-                    for omic, omicPvalue in pathwayPvalues.iteritems():
+                for pathway, pathwayPvalues in db_pvalues.items():
+                    for omic, omicPvalue in pathwayPvalues.items():
                         # Skip those in which there is no pValue (no matching in the pathway for that omic)
                         if omicPvalue != '-':
                             pvaluesByOmic[omic][pathway] = omicPvalue
 
-                adjustedPvaluesByOmic[db_name] = {omic: adjustPvalues(omic_pvalues) for omic, omic_pvalues in pvaluesByOmic.iteritems()}
+                adjustedPvaluesByOmic[db_name] = {omic: adjustPvalues(omic_pvalues) for omic, omic_pvalues in pvaluesByOmic.items()}
 
             response.setContent({
                 "success": True,

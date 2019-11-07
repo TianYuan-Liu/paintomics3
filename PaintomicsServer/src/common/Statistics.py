@@ -1,5 +1,5 @@
 from math import log
-from scipy.stats import chisqprob, fisher_exact, combine_pvalues
+from scipy.stats import chi2, fisher_exact, combine_pvalues
 from statsmodels.sandbox.stats.multicomp import multipletests
 ##*******************************************************************************************
 ##****AUXLIAR FUNCTION DEFINITION************************************************************
@@ -40,20 +40,24 @@ def calculateCombinedFisher(significanceValuesList):
 
     accumulatedValue = accumulatedValue * -2
 
-    return(chisqprob(accumulatedValue, 2*len(significanceValuesList)))
+    return(chi2.sf(accumulatedValue, 2*len(significanceValuesList)))
 
 # fdr_bh (default), fdr_by, nada
 def adjustPvalues(pvaluesList):
     # Returns array [reject, pvals_corrected, alphacSidak, alphacBonf]
     adjust_methods = {'fdr_bh': 'FDR BH', 'fdr_by': 'FDR BY'}
-    adjusted_pvalues = {adjust_methods[adjust_method]: dict(zip(pvaluesList.keys(), multipletests(pvaluesList.values(), method = adjust_method)[1].tolist())) for adjust_method in adjust_methods.keys()}
+    adjusted_pvalues = {adjust_methods[adjust_method]: dict(zip(pvaluesList.keys(), multipletests(list(pvaluesList.values()), method = adjust_method)[1].tolist())) for adjust_method in adjust_methods.keys()}
 
     return adjusted_pvalues
 
 
 def calculateStoufferCombinedPvalue(pvalues, weights):
+    # Stouffer method cannot deal with p-values equal to 1, returning Nan
+    # Prevent that by removing a small value in those cases
+    curatedPvalues = [min(pvalue[2], 0.9999999999) if type(pvalue) is list else min(pvalue, 0.9999999999) for pvalue in pvalues]
+
     # P-value in third position ([nFeatures, nRelevantFeatures, pValue])
-    combinedPvalue = combine_pvalues([pvalue[2] if type(pvalue) is list else pvalue for pvalue in pvalues], 'stouffer', weights)
+    combinedPvalue = combine_pvalues(curatedPvalues, 'stouffer', weights)
 
     return combinedPvalue[1]
 

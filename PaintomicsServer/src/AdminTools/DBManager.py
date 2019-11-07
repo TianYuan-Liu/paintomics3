@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 import sys
 import os
 # sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + "/../../")
@@ -6,7 +6,7 @@ import os
 import datetime, traceback, shutil, inspect
 import logging
 import logging.config
-import Image
+from PIL import Image
 from textwrap import wrap
 from time import strftime, sleep, time
 from subprocess import check_call, CalledProcessError
@@ -46,7 +46,7 @@ def download_command(inputfile=None, specie=None, kegg=0, mapping=0, common=0, r
         retry     -- (optional) 1 to retry the installation of ERRONEOUS SPECIES from previous version, 0 to ignore them. Default=0
     """
     if inputfile == None and specie == None:
-        print "Organisms not specified, please type ./DBManager.py download -h for help"
+        print("Organisms not specified, please type ./DBManager.py download -h for help")
         exit(-1)
 
     #**************************************************************************
@@ -293,7 +293,7 @@ def install_command(inputfile=None, specie=None, common=0):
         common    -- (optional) 1 if Pathways info (classification, PNG images...) should be reinstalled, 0 to keep from previous version. Default=0
     """
     if inputfile == None and specie == None:
-        print "Organisms not specified, please type ./DBManager.py install -h for help"
+        print("Organisms not specified, please type ./DBManager.py install -h for help")
         exit(-1)
 
     readConfigurationFile()
@@ -669,7 +669,7 @@ def getCurrentInstalledSpecies():
     from pymongo import MongoClient
 
     client = MongoClient(MONGODB_HOST, MONGODB_PORT)
-    databases = client.database_names()
+    databases = client.list_database_names()
 
     # ****************************************************************
     # Step 2.FOR EACH INSTALLED DATABASE GET THE INFORMATION
@@ -849,11 +849,11 @@ def confirm(prompt=None, resp=False):
         prompt = '%s [%s]|%s: ' % (prompt, 'n', 'y')
 
     while True:
-        ans = raw_input(prompt)
+        ans = input(prompt)
         if not ans:
             return resp
         if ans not in ['y', 'Y', 'n', 'N']:
-            print 'please enter y or n.'
+            print('please enter y or n.')
             continue
         if ans == 'y' or ans == 'Y':
             return True

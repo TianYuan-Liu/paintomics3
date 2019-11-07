@@ -27,7 +27,7 @@ from collections import defaultdict
 from numpy import percentile as numpy_percentile, min as numpy_min, max as numpy_max, asarray, float32, logical_or, invert, sum as numpy_sum
 
 from src.common.Util import Model
-from Feature import Gene, Compound, OmicValue
+from .Feature import Gene, Compound, OmicValue
 from src.common.FeatureNamesToKeggIDsMapper import mapFeatureNamesToKeggIDs, mapFeatureNamesToCompoundsIDs
 from zipfile import ZipFile, ZIP_DEFLATED
 from shutil import make_archive as shutil_make_archive
@@ -148,7 +148,7 @@ class Job(Model):
         # {ID: values.toBSON() }
         valueTable = {}
 
-        for ID, feature in dict(self.getInputGenesData(), **self.getInputCompoundsData()).iteritems():
+        for ID, feature in dict(self.getInputGenesData(), **self.getInputCompoundsData()).items():
             valueTable[ID] = set([feature.getName()])
 
             for omicValue in feature.getOmicsValues():
@@ -266,10 +266,10 @@ class Job(Model):
         allValues = []  #KEEP ALL VALUES TO CALCULATE PERCENTILES FOR EACH OMIC
 
         if(inputOmic.get("isExample", False) == False):
-            valuesFileName = self.getInputDir() + valuesFileName
-            relevantFileName = self.getInputDir() + relevantFileName
-            associationsFileName = self.getInputDir() + associationsFileName
-            relevantAssociationsFileName = self.getInputDir() + relevantAssociationsFileName
+            valuesFileName = "{path}/{file}".format(path=self.getInputDir(), file=valuesFileName)
+            relevantFileName = "{path}/{file}".format(path=self.getInputDir(), file=relevantFileName)
+            associationsFileName = "{path}/{file}".format(path=self.getInputDir(), file=associationsFileName)
+            relevantAssociationsFileName = "{path}/{file}".format(path=self.getInputDir(), file=relevantAssociationsFileName)
 
         totalInputFeatures  = set()
         totalMappedFeatures = foundFeatures = 0
@@ -341,7 +341,7 @@ class Job(Model):
                             totalInputFeatures.add(omicValueVar.getOriginalName() if enrichment == 'features' else omicValueVar.getInputName())
 
                         # Make sure to use numerical values
-                        numericValues = map(float, line[1:len(line)])
+                        numericValues = list(map(float, line[1:len(line)]))
 
                         # If there exists an appropriate association list, use that to retrieve the gene
                         # name as the previous process of matching regions or regulators to genes (rgmatch, etc)
@@ -354,8 +354,8 @@ class Job(Model):
                             for geneID in geneIDs:
                                 omicValueAux = OmicValue(geneID)
                                 omicValueAux.setOmicName(omicName)
-                                omicValueAux.setRelevant(relevantFeatures.has_key(line[0].lower()))
-                                omicValueAux.setRelevantAssociation(relevantAssociationFeatures.has_key(':::'.join([geneID, line[0]]).lower()))
+                                omicValueAux.setRelevant(line[0].lower() in relevantFeatures)
+                                omicValueAux.setRelevantAssociation(':::'.join([geneID, line[0]]).lower() in relevantAssociationFeatures)
                                 omicValueAux.setValues(numericValues)
                                 omicValueAux.setOriginalName(line[0])
 
@@ -367,7 +367,7 @@ class Job(Model):
                             omicValueAux.setOmicName(omicName)
                             # omicValueAux.setRelevant(relevantFeatures.has_key(omicValueAux.getInputName().lower()))
                             # TODO: Relevant flag using whole line including original name?
-                            omicValueAux.setRelevant(relevantFeatures.has_key(line[0].lower()))
+                            omicValueAux.setRelevant(line[0].lower() in relevantFeatures)
                             omicValueAux.setValues(numericValues)
 
                             if len(columnID) > 1:
@@ -438,7 +438,7 @@ class Job(Model):
             logging.info("PARSING USER GENE BASED FILE (" + omicName + ")... DONE" )
 
             # Total unique mapped features. "Total" if there are more than one database
-            totalMapped = foundFeatures.get("Total", foundFeatures.values()[0])
+            totalMapped = foundFeatures.get("Total", list(foundFeatures.values())[0])
 
             #   0        1       2    3    4    5     6,   7   8      9        10
             #[MAPPED, UNMAPPED, MIN, P10, Q1, MEDIAN, Q3, P90, MAX, MIN_IR, Max_IR]
@@ -470,8 +470,8 @@ class Job(Model):
         allValues = []  #KEEP ALL VALUES TO CALCULATE PERCENTILES FOR EACH OMIC
 
         if(inputOmic.get("isExample", False) == False):
-            valuesFileName = self.getInputDir() + valuesFileName
-            relevantFileName = self.getInputDir() + relevantFileName
+            valuesFileName = "{path}/{file}".format(path=self.getInputDir(), file=valuesFileName)
+            relevantFileName = "{path}/{file}".format(path=self.getInputDir(), file=relevantFileName)
 
         #STEP 1. PARSE THE RELEVANT FEATURES FILE FOR THE CURRENT OMIC (IF UPLOADED) AND EXTRACT THE INFORMATION.
         logging.info("PARSING RELEVANT FEATURES FILE (" + omicName + ")..." )
@@ -504,8 +504,8 @@ class Job(Model):
                         #STEP 2.C.1 CREATE A NEW OMIC VALUE WITH ROW DATA
                         omicValueAux = OmicValue(line[0].lower())
                         omicValueAux.setOmicName(omicName)
-                        omicValueAux.setRelevant(relevantFeatures.has_key(omicValueAux.getInputName()))
-                        omicValueAux.setValues(map(float, line[1:len(line)]))
+                        omicValueAux.setRelevant(omicValueAux.getInputName() in relevantFeatures)
+                        omicValueAux.setValues(list(map(float, line[1:len(line)])))
 
                         #STEP 2.C.2 CREATE A NEW TEMPORAL COMPOUND INSTANCE
                         compoundAux = Compound(line[0].lower())
@@ -624,14 +624,14 @@ class Job(Model):
             if(attr == "inputCompoundsData"):
                 compoundInstance = None
                 self.inputCompoundsData.clear()
-                for (compoundID, compoundData) in value.iteritems():
+                for (compoundID, compoundData) in value.items():
                     compoundInstance = Compound(compoundID)
                     compoundInstance.parseBSON(compoundData)
                     self.addInputCompoundData(compoundInstance)
             elif(attr == "inputGenesData"):
                 geneInstance = None
                 self.inputGenesData.clear()
-                for (geneID, genData) in value.iteritems():
+                for (geneID, genData) in value.items():
                     geneInstance = Gene(geneID)
                     geneInstance.parseBSON(genData)
                     self.addInputGeneData(geneInstance)
@@ -640,19 +640,19 @@ class Job(Model):
 
     def toBSON(self, recursive= True):
         bson = {}
-        for attr, value in self.__dict__.iteritems():
+        for attr, value in self.__dict__.items():
             if not isinstance(value, dict) and ( ["svgDir", "inputDir", "outputDir", "temporalDir"].count(attr) == 0) :
                 bson[attr] = value
 
             elif(recursive == True):
                 if(attr == "inputCompoundsData"):
                     compounds = {}
-                    for (compoundID, compoundInstance) in value.iteritems():
+                    for (compoundID, compoundInstance) in value.items():
                         compounds[compoundID] = compoundInstance.toBSON()
                     value = compounds
                 elif(attr == "inputGenesData"):
                     genes = {}
-                    for (geneID, geneInstance) in value.iteritems():
+                    for (geneID, geneInstance) in value.items():
                         genes[geneID] = geneInstance.toBSON()
                     value = genes
                 bson[attr] = value

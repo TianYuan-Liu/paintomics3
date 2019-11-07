@@ -112,7 +112,7 @@ function UserController() {
                             logMessage: "Signed in as " + response.userName,
                             callback: function () {
                                 application.getController("JobController").resetButtonClickHandler(null, true);
-																location.reload();
+                                location.reload();
                             }
                         });
                     },

@@ -17,12 +17,12 @@ class PathwayDAO(DAO):
         matchedPathways = []
         queryParams={}
 
-        if(otherParams != None and otherParams.has_key("jobID")):
+        if(otherParams != None and "jobID" in otherParams):
             queryParams["jobID"] = otherParams["jobID"]
 
         loadGraphicalData = False
         graphicalDataDAO = None
-        if(otherParams.has_key("loadGraphicalData") and otherParams["loadGraphicalData"] == True ):
+        if("loadGraphicalData" in otherParams and otherParams["loadGraphicalData"] == True ):
             loadGraphicalData = True
             graphicalDataDAO = GraphicalDataDAO(dbManager=self.dbManager)
 
@@ -57,7 +57,7 @@ class PathwayDAO(DAO):
 
     def insertAll(self, instancesList, otherParams=None):
         saveGraphicalData = False
-        if(otherParams != None and otherParams.has_key("saveGraphicalData") and otherParams["saveGraphicalData"] == True ):
+        if(otherParams != None and "saveGraphicalData" in otherParams and otherParams["saveGraphicalData"] == True ):
             saveGraphicalData = True
             graphicalDataDAO = GraphicalDataDAO(dbManager=self.dbManager)
 
@@ -89,7 +89,7 @@ class PathwayDAO(DAO):
 
     def removeAll(self, otherParams=None):
         queryParams={}
-        if(otherParams != None and otherParams.has_key("jobID")):
+        if(otherParams != None and "jobID" in otherParams):
             queryParams["jobID"] = otherParams["jobID"]
 
         collection = self.dbManager.getCollection(self.collectionName)

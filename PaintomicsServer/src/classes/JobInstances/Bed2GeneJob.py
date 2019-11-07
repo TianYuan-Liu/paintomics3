@@ -152,8 +152,8 @@ class Bed2GeneJob(Job):
         if(inputOmic.get("isExample", False) == True):
             return nConditions, error
         else:
-            valuesFileName = self.getInputDir() + valuesFileName
-            relevantFileName = self.getInputDir() + relevantFileName
+            valuesFileName = "{path}/{file}".format(path=self.getInputDir(), file=valuesFileName)
+            relevantFileName = "{path}/{file}".format(path=self.getInputDir(), file=relevantFileName)
 
         #*************************************************************************
         # STEP 1. VALIDATE THE RELEVANT FEATURES FILE
@@ -238,7 +238,7 @@ class Bed2GeneJob(Job):
                     # STEP 2.2 IF CONTAINS NOT VALID VALUES, ADD ERROR
                     #**************************************************************************************
                     try:
-                        map(float, line[3:len(line)])
+                        list(map(float, line[3:len(line)]))
                     except:
                         erroneousLines[nLine] = erroneousLines.get(nLine,  "   > Line " + str(nLine) + ":") + "Line contains invalid values."
 
@@ -281,8 +281,8 @@ class Bed2GeneJob(Job):
         relevantFile = inputOmic.get("relevantFeaturesFile")
 
         if(inputOmic.get("isExample", False) == False):
-            dataFile = self.getInputDir()+  dataFile
-            relevantFile = self.getInputDir()+ relevantFile
+            dataFile = "{path}/{file}".format(path=self.getInputDir(), file=dataFile)
+            relevantFile = "{path}/{file}".format(path=self.getInputDir(), file=relevantFile)
 
         if not os_path.isdir(self.getTemporalDir()):
             os_mkdir(self.getTemporalDir())
@@ -335,7 +335,7 @@ class Bed2GeneJob(Job):
                     regionID  = line[0]
                     geneID    = line[2]
                     geneRegion= line[5]
-                    values    =  map(float, line[11:])
+                    values    =  list(map(float, line[11:]))
 
                     #STEP 5.2 CHECK IF GENE REGION IS VALID OR IGNORE ENTRY
                     if self.reportRegions.count("all") == 0 and self.reportRegions.count(geneRegion) == 0:
@@ -345,7 +345,7 @@ class Bed2GeneJob(Job):
                     omicValueAux = OmicValue(regionID)
                     #TODO: set omic name with chipseq, dnase,...?
                     omicValueAux.setOmicName(regionID)
-                    omicValueAux.setRelevant(relevantRegions.has_key(regionID))
+                    omicValueAux.setRelevant(regionID in relevantRegions)
                     omicValueAux.setValues(values)
                     omicValueAux.setOriginalName(geneRegion)
 
@@ -374,7 +374,7 @@ class Bed2GeneJob(Job):
 
                 logging.info("SUMMARIZING GENE QUANTIFICATION...")
                 allRegionsValues = relevantRegionsValues = selectedRegions = omicValue = None
-                for geneID, gene in self.getInputGenesData().iteritems():
+                for geneID, gene in self.getInputGenesData().items():
                     #SAVE ALL REGIONS AND ALL RELEVANT REGIONS, IF RELEVANT_REGIONS > 0, THEN THE SUMMARIZATION WILL PERFORMED OVER RELEVANT REGIONS
                     allRegionsValues = []
                     relevantRegionsValues = []
@@ -406,11 +406,11 @@ class Bed2GeneJob(Job):
 
                     for dictValue in summarizedValues:
                         if self.summarizationMethod == 'none':
-                            geneName = geneID + ':::' + dictValue.keys()[0]
+                            geneName = geneID + ':::' + list(dictValue.keys())[0]
                         else:
                             geneName = geneID
 
-                        bed2genesOutput.write(geneName + "\t" + '\t'.join(map(str, dictValue.values()[0])) + "\n")
+                        bed2genesOutput.write(geneName + "\t" + '\t'.join(map(str, list(dictValue.values())[0])) + "\n")
 
 
                     #TODO: OMIC NAME??
@@ -452,7 +452,7 @@ class Bed2GeneJob(Job):
                 return [fileName + ".zip", mainOutputFileName, secondOutputFileName]
 
     def summarizeValues(self, dictSelectedRegions):
-        selectedRegions = [region.values()[0] for region in dictSelectedRegions]
+        selectedRegions = [list(region.values())[0] for region in dictSelectedRegions]
 
         if(self.summarizationMethod == "mean"):
             from numpy import mean as npmean

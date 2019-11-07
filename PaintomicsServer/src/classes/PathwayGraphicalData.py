@@ -18,7 +18,7 @@
 #  Technical contact paintomics@cipf.es
 #**************************************************************
 
-from FeatureGraphicalData import FeatureGraphicalData
+from .FeatureGraphicalData import FeatureGraphicalData
 from src.common.Util import Model
 
 class PathwayGraphicalData(Model):
@@ -91,7 +91,7 @@ class PathwayGraphicalData(Model):
 
     def toBSON(self):
         bson = {}
-        for attr, value in self.__dict__.iteritems():
+        for attr, value in self.__dict__.items():
             if (attr == "featuresGraphicalData"):
                 featuresGraphicalData = []
                 for featureGraphicalData in self.getFeaturesGraphicalData():

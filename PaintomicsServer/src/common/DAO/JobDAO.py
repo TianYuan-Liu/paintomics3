@@ -20,9 +20,9 @@ class JobDAO(DAO):
         matchedJobs = []
         queryParams={}
 
-        if(otherParams.has_key("userID")):
+        if("userID" in otherParams):
             queryParams["userID"] = otherParams["userID"]
-        if(otherParams.has_key("jobType")):
+        if("jobType" in otherParams):
             queryParams["jobType"] = otherParams["jobType"]
 
         collection = self.dbManager.getCollection(self.collectionName)
@@ -43,7 +43,7 @@ class JobDAO(DAO):
     # DELETE INSTANCES
     #******************************************************************************************************************
     def remove(self, id, otherParams=None):
-        if(otherParams == None or not otherParams.has_key("userID")):
+        if(otherParams == None or not "userID" in otherParams):
             return False
         daoInstance = None
         jobType = otherParams.get("jobType")

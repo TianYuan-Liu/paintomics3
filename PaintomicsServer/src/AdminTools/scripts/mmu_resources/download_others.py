@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import traceback
 from sys import argv, stderr
@@ -43,12 +43,13 @@ try:
     COMMON_BUILD_DB_TOOLS.downloadFile(resource.get("url"), resource.get("file"), DESTINATION + resource.get("output"),  SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1)
 
     #**************************************************************************
-    #STEP 2.4 GET ENSEMBL VEGA GENE ID -> TRANSCRIPT ID -> PEPTIDE ID -> ENTREZ ID
-    resource = COMMON_BUILD_DB_TOOLS.EXTERNAL_RESOURCES.get("vega")[0]
-    COMMON_BUILD_DB_TOOLS.queryBiomart(resource.get("url"), ROOT_DIR + "scripts/" + resource.get("file"), DESTINATION + resource.get("output"),  SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1)
+    #STEP 2.4 GET REACTOME DATA
+    resource = COMMON_BUILD_DB_TOOLS.EXTERNAL_RESOURCES.get("reactome")[0]
+    COMMON_BUILD_DB_TOOLS.downloadFile(resource.get("url"), resource.get("file"), DESTINATION + resource.get("output"),
+                                       SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1)
 
 except Exception as ex:
-    stderr.write("FAILED WHILE DOWNLOADING DATA " + ex.message)
+    stderr.write("FAILED WHILE DOWNLOADING DATA " + str(ex))
     traceback.print_exc(file=stderr)
     exit(1)
 

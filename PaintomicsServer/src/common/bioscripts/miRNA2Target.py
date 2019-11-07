@@ -28,6 +28,7 @@ import sys
 import os.path
 import scipy.stats
 from csv import reader as csv_reader
+from collections import defaultdict
 
 def main():
     try:
@@ -71,32 +72,32 @@ def main():
         elif o in ("-m", "--method"):
             method = a
         else:
-            print "Unknown option"
-            print "Use python miRNA2Target.py -h for help"
+            print("Unknown option")
+            print("Use python miRNA2Target.py -h for help")
 
     if referenceFile is not None and dataFile is not None and outputfile is not None:
         run(referenceFile, dataFile, geneExpresion, outputfile, method)
 
 def print_usage():
-    print "\nUsage: python miRNA2Target.py [options] <mandatory>"
-    print "Options:"
-    print "\t-m, --method:\n\t\t The score method, accepted values are 'fc' (Fold change) | 'spearman' | 'kendall' | 'pearson'"
-    print "\t-g, --genes:\n\t\t A file containing the gene expression quantification. These values are necessary to calculate the correlation between miRNAs and targets."
-    print "\t-h, --help:\n\t\t show this help message and exit"
-    print "Mandatory:"
-    print "\t-r, --reference:\n\t\t The reference file"
-    print "\t-i, --mirna:\n\t\t The miRNA quantification file"
-    print "\t-o, --output:\n\t\t Output file"
-    print "\nVersion 0.1 August 2016\n"
+    print("\nUsage: python miRNA2Target.py [options] <mandatory>")
+    print("Options:")
+    print("\t-m, --method:\n\t\t The score method, accepted values are 'fc' (Fold change) | 'spearman' | 'kendall' | 'pearson'")
+    print("\t-g, --genes:\n\t\t A file containing the gene expression quantification. These values are necessary to calculate the correlation between miRNAs and targets.")
+    print("\t-h, --help:\n\t\t show this help message and exit")
+    print("Mandatory:")
+    print("\t-r, --reference:\n\t\t The reference file")
+    print("\t-i, --mirna:\n\t\t The miRNA quantification file")
+    print("\t-o, --output:\n\t\t Output file")
+    print("\nVersion 0.1 August 2016\n")
 
 
-def run(referenceFile, dataFile, geneExpresion, outputFile, method="fc"):
+def run(referenceFile, relevantReferenceFile, dataFile, geneExpresion, corrOutputFile, method="fc"):
     miRNAtable = {}
     geneTable = {}
     dataFile_header = ""
 
     #STEP 1. GENERATE THE TABLE WITH ALL THE MIRNAS IN THE INPUT
-    print "STEP 1. Reading miRNA expression file..."
+    print("STEP 1. Reading miRNA expression file...")
     with open(dataFile, 'rU') as inputDataFile:
         isFirstLine = True
         for line in csv_reader(inputDataFile, delimiter="\t"):
@@ -104,32 +105,38 @@ def run(referenceFile, dataFile, geneExpresion, outputFile, method="fc"):
                 dataFile_header = line[1:]
                 isFirstLine = False
             else:
-                miRNAtable[line[0]] = {"values" : line[1:], "targets" : [] }
+                miRNAtable[line[0]] = {"values" : line[1:], "targets" : defaultdict(set)}
     inputDataFile.close()
 
     #STEP 2. FILL THE TABLE WITH ALL THE TARGETS FOR EACH MIRNA
-    print "STEP 2. Reading miRNA -> targets file..."
+    print("STEP 2. Reading miRNA -> targets file...")
+
     with open(referenceFile, 'rU') as inputDataFile:
         for line in csv_reader(inputDataFile, delimiter="\t"):
             if line[0] in miRNAtable:
                 miRNAtable[line[0]]["targets"].append(line[1])
     inputDataFile.close()
 
-    #STEP 3. FILL THE TABLE WITH ALL THE GENES
-    if geneExpresion != None:
-        print "STEP 3. Processing mRNA expression file..."
-        with open(geneExpresion, 'rU') as inputDataFile:
-            for line in csv_reader(inputDataFile, delimiter="\t"):
-                geneTable[line[0]] = line[1:]
-        inputDataFile.close()
-    else:
-        print "STEP 3. No mRNA expression file was provided..."
-        method = "fc"
 
-    #STEP 4. FOR EACH MIRNA AND EACH TARGET, CALCULATE THE SCORE AND SAVE RESULTS TO A FILE
+    # STEP 4. FOR EACH REGULATOR AND EACH TARGET, CALCULATE THE SCORE AND SAVE RESULTS TO A FILE IF NO
+    # RELEVANT ASSOCIATIONS WERE PROVIDED.
+    useCorrelation = relevantReferenceFile is None
+
     try:
-        print "STEP 4. Processing miRNAs and calculating score..."
-        outputFile = open(outputFile, 'w')
+        print("STEP 3. Processing miRNAs and calculating score...")
+
+        # STEP 3. FILL THE TABLE WITH ALL THE GENES
+        if geneExpresion != None:
+            print("STEP 3. Processing mRNA expression file...")
+            with open(geneExpresion, 'rU') as inputDataFile:
+                for line in csv_reader(inputDataFile, delimiter="\t"):
+                    geneTable[line[0]] = line[1:]
+            inputDataFile.close()
+        else:
+            print("STEP 3. No mRNA expression file was provided...")
+            method = "fc"
+
+        outputFile = open(corrOutputFile, 'w')
         outputFile.write("# miRNA_id\ttarget_id\tscore\tscore method\t" + "\t".join(dataFile_header) + "\n")
 
         miRNA_id = miRNA_values = miRNA_targets = target_id = target_values = score = None
@@ -138,20 +145,25 @@ def run(referenceFile, dataFile, geneExpresion, outputFile, method="fc"):
         for miRNA_id in miRNAtable:
             current+=1
             if (current*100/total) % 20 == 0:
-                print "Processed " + str(current*100/total) + "% of " + str(total) + " total miRNAs"
+                print("Processed " + str(current*100/total) + "% of " + str(total) + " total miRNAs")
 
             miRNA_values = miRNAtable[miRNA_id]["values"]
             miRNA_targets = miRNAtable[miRNA_id]["targets"]
+
             for target_id in miRNA_targets:
-                target_values = geneTable.get(target_id, None)
-                if method == "fc" or target_values is not None:
-                    score = getScore(miRNA_values, target_values, method)
-                    outputFile.write(miRNA_id + "\t" + target_id + "\t" + str(score) + "\t" + method + "\t" + "\t".join(miRNA_values) + "\n")
+                if useCorrelation:
+                    target_values = geneTable.get(target_id, None)
+
+                    if method == "fc" or target_values is not None:
+                        score = getScore(miRNA_values, target_values, method)
+                        outputFile.write(miRNA_id + "\t" + target_id + "\t" + str(score) + "\t" + method + "\t" + "\t".join(miRNA_values) + "\n")
+                else:
+                    outputFile.write(miRNA_id + "\t" + target_id + "\t" + str(0) + "\t" + "Association" + "\t" + "\t".join(miRNA_values) + "\n")
     except Exception as e:
-        print "Exception catched " +  str(e)
+        print("Exception catched " +  str(e))
         pass
     finally:
-        print "STEP 4. Done"
+        print("STEP 4. Done")
         outputFile.close()
 
     return True

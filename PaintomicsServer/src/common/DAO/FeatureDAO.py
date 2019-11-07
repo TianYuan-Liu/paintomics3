@@ -17,9 +17,9 @@ class FeatureDAO(DAO):
         matchedFeatures = []
         queryParams={}
 
-        if(otherParams.has_key("jobID")):
+        if("jobID" in otherParams):
             queryParams["jobID"] = otherParams["jobID"]
-        if(otherParams.has_key("featureType")):
+        if("featureType" in otherParams):
             queryParams["featureType"] = otherParams["featureType"]
 
         collection = self.dbManager.getCollection(self.collectionName)
@@ -59,15 +59,15 @@ class FeatureDAO(DAO):
             instanceBSON["jobID"] = jobID
             instanceBSONList.append(instanceBSON)
         if len(instanceBSONList) > 0:
-            collection.insert(instanceBSONList)
+            collection.insert_many(instanceBSONList)
 
         return True
 
     def removeAll(self, otherParams=None):
         queryParams={}
-        if(otherParams.has_key("jobID")):
+        if("jobID" in otherParams):
             queryParams["jobID"] = otherParams["jobID"]
-        if(otherParams.has_key("featureType")):
+        if("featureType" in otherParams):
             queryParams["featureType"] = otherParams["featureType"]
         collection = self.dbManager.getCollection(self.collectionName)
         match = collection.remove(queryParams)
