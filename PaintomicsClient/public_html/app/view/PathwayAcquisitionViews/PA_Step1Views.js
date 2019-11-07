@@ -865,6 +865,9 @@ function RegionBasedOmicSubmittingPanel(nElem, options) {
 		if (values.configVars) {
 			component.queryById("configVars").setValue(values.configVars);
 		}
+		if (values.enrichmentType) {
+			component.queryById("enrichmentType").setValue(values.enrichmentType);
+		}
 		if (values.ignoreMissing) {
 			component.queryById("ignoreMissing").setValue(values.ignoreMissing);
 		}
@@ -1649,8 +1652,26 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 		if (values.secondaryFileType) {
 			component.queryById("relevantFileTypeSelector").setValue(values.secondaryFileType);
 		}
+		if (values.thirdFile) {
+			component.queryById("thirdFileSelector").setValue(values.secondaryFile);
+		}
+		if (values.thirdFileType) {
+			component.queryById("thirdFileTypeSelector").setValue(values.secondaryFileType);
+		}
+		if (values.fourthFile) {
+			component.queryById("fourthFileSelector").setValue(values.secondaryFile);
+		}
+		if (values.ourthFileType) {
+			component.queryById("fourthFileTypeSelector").setValue(values.secondaryFileType);
+		}
 		if (values.toogleMapRegions) {
 			component.queryById("toogleMapRegions").setVisible(values.toogleMapRegions === true);
+		}
+		if (values.configVars) {
+			component.queryById("configVars").setValue(values.configVars);
+		}
+		if (values.enrichmentType) {
+			component.queryById("enrichmentType").setValue(values.enrichmentType);
 		}
 
 		if (!component.isVisible()) {
@@ -1687,12 +1708,12 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 				hidden: !this.allowToogle,
 				html: '<div class="checkbox" style=" margin: 10px 50px; font-size: 16px; "><input type="checkbox" id="' + this.namePrefix + '_mapRegions"><label for="' + this.namePrefix + '_mapRegions">My features are already mapped to Gene IDs, skip this step.</label></div>'
 			},
-			{
-				xtype: "box",
-				itemId: "toogleUseAssociations",
-				hidden: !this.allowToogle,
-				html: '<div class="checkbox" style=" margin: 10px 50px; font-size: 16px; "><input type="checkbox" id="' + this.namePrefix + '_useAssociations"><label for="' + this.namePrefix + '_useAssociations">Provide own associations lists.</label></div>'
-			},
+			// {
+			// 	xtype: "box",
+			// 	itemId: "toogleUseAssociations",
+			// 	hidden: !this.allowToogle,
+			// 	html: '<div class="checkbox" style=" margin: 10px 50px; font-size: 16px; "><input type="checkbox" id="' + this.namePrefix + '_useAssociations"><label for="' + this.namePrefix + '_useAssociations">Provide own associations lists.</label></div>'
+			// },
 			{
 				xtype: "container",
 				itemId: "itemsContainerAlt",
@@ -1762,6 +1783,20 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 					value: "Relevant regulators list (mapped to Genes)",
 					hidden: true,
 					helpTip: "Specify the type of data for uploaded file (Relevant Genes list, Relevant proteins list,...)."
+				},  {
+					xtype: "myFilesSelectorButton",
+					fieldLabel: 'Regulator associations file',
+					namePrefix: this.namePrefix + '_associations',
+					itemId: "thirdFileSelector",
+					helpTip: "Upload the association list."
+				}, {
+					xtype: 'textfield',
+					fieldLabel: 'File Type',
+					name: this.namePrefix + '_associations_file_type',
+					itemId: "associationsFileTypeSelector",
+					value: "Regulator associations",
+					hidden: true,
+					helpTip: "Specify the type of data for uploaded file (Relevant Genes list, Relevant proteins list,...)."
 				}, {
 					xtype: 'textfield',
 					fieldLabel: 'Map to',
@@ -1795,121 +1830,6 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 						]
 					}),
 					helpTip: "Define how the Fisher contingency table must be done: counting genes, features (i.e: microRNA, proteins...) or associations (combination of genes & features)."
-				}]
-			}, {
-				xtype: "container",
-				itemId: "itemsContainerAssociations",
-				layout: {
-					align: 'stretch',
-					type: 'vbox'
-				},
-				disabled: true,
-				defaults: {
-					labelAlign: "right",
-					labelWidth: 150,
-					maxLength: 100,
-					maxWidth: 500
-				},
-				hidden: true,
-				items: [{
-					xtype: 'combo',
-					fieldLabel: 'Omic Name',
-					name: this.namePrefix + '_omic_name',
-					value: this.omicName,
-					itemId: "omicNameField",
-					displayField: 'name',
-					valueField: 'name',
-					emptyText: 'Type or choose the omic type',
-					queryMode: 'local',
-					hidden: this.omicName !== "",
-					editable: true,
-					allowBlank: false,
-					store: Ext.create('Ext.data.ArrayStore', {
-						fields: ['name'],
-						autoLoad: true,
-						proxy: {
-							type: 'ajax',
-							url: 'resources/data/all_omics.json',
-							reader: {
-								type: 'json',
-								root: 'omics',
-								successProperty: 'success'
-							}
-						}
-					})
-				}, {
-					xtype: "myFilesSelectorButton",
-					fieldLabel: 'Data file',
-					namePrefix: this.namePrefix,
-					itemId: "mainFileSelector",
-					helpTip: "Upload the feature quantification file (Gene expression, proteomics quantification,...) or choose it from your data folder."
-				}, {
-					xtype: 'textfield',
-					fieldLabel: 'File Type',
-					name: this.namePrefix + '_file_type',
-					itemId: "fileTypeSelector",
-					value: "Map file (features mapped to Genes)",
-					hidden: true,
-					helpTip: "Specify the type of data for uploaded file (Gene Expression file, Proteomic quatification,...)."
-				}, {
-					xtype: "myFilesSelectorButton",
-					fieldLabel: 'Relevant features file',
-					namePrefix: this.namePrefix + '_relevant',
-					itemId: "secondaryFileSelector",
-					helpTip: "Upload the list of relevant features (relevant genes, relevant proteins,...)."
-				}, {
-					xtype: 'textfield',
-					fieldLabel: 'File Type',
-					name: this.namePrefix + '_relevant_file_type',
-					itemId: "relevantFileTypeSelector",
-					value: "Relevant regulators list (mapped to Genes)",
-					hidden: true,
-					helpTip: "Specify the type of data for uploaded file (Relevant Genes list, Relevant proteins list,...)."
-				}, {
-					xtype: "myFilesSelectorButton",
-					fieldLabel: 'Associations file',
-					namePrefix: this.namePrefix + '_associations',
-					itemId: "mainAssociationFileSelector",
-					helpTip: "Upload the 2 column association file associating genes with features or choose it from your data folder."
-				}, {
-					xtype: "myFilesSelectorButton",
-					fieldLabel: 'Relevant associations file',
-					namePrefix: this.namePrefix + '_relevant_associations',
-					itemId: "secondaryAssociationFileSelector",
-					helpTip: "Upload the 2 column list of relevant associations (gene - feature) or choose it from your data folder."
-				}, {
-					xtype: 'textfield',
-					fieldLabel: 'Map to',
-					name: this.namePrefix + '_match_type',
-					itemId: "mapToSelector",
-					value: this.mapTo,
-					hidden: true
-				},{
-					xtype: 'textfield',
-					name: this.namePrefix + '_config_args',
-					hidden: true,
-					itemId: 'configVars',
-					maxLength: 1000
-				},
-				{
-					xtype: 'combo',
-					itemId: 'enrichmentType',
-					fieldLabel: 'Enrichment type',
-					name: this.namePrefix + '_enrichment',
-					hidden: this.omicName !== "",
-					value: this.featureEnrichment.toString(),
-					displayField: 'name', valueField: 'value',
-					editable: false,
-					allowBlank: false,
-					store: Ext.create('Ext.data.ArrayStore', {
-						fields: ['name', 'value'],
-						data: [
-							['Genes', 'genes'],
-							['Features', 'features'],
-							['Associations', 'associations']
-						]
-					}),
-					helpTip: "Define how the Fisher contingency table must be done: counting genes, features (i.e: microRNA, proteins...) or the relevant associations (combination of genes & features)."
 				}]
 			}, {
 				xtype: "container",
@@ -1995,151 +1915,6 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 					itemId: "relevantFileTypeSelector",
 					value: "Relevant gene list"
 				},
-				/*TARGETS FILE*/
-				{
-					xtype: "myFilesSelectorButton",
-					fieldLabel: "Features targets<br>reference file",
-					namePrefix: this.namePrefix + '__annotations',
-					itemId: "mirnaTargetsFileSelector",
-					helpTip: "Upload the reference file that relates each feature (i.e. miRNA) with its potential targets. This information is usually extracted from popular databases such as miRbase for miRNAs. See above the accepted format for the file."
-				}, {
-					xtype: 'textfield',
-					fieldLabel: 'File Type',
-					name: this.namePrefix + '_annotations_file_type',
-					hidden: true,
-					itemId: "mirnaTargetsFileTypeSelector",
-					value: "Features targets reference"
-				},
-				/*RNA-SEQ FILE*/
-				{
-					xtype: 'textfield',
-					fieldLabel: 'Omic Name',
-					name: this.namePrefix + '_rnaseqaux_omic_name',
-					hidden: true,
-					itemId: "rnaseqauxOmicNameField",
-					value: "Gene Expression"
-				},
-				{
-					xtype: "myFilesSelectorButton",
-					fieldLabel: "Gene expression"/*<br> (optional)"*/,
-					namePrefix: this.namePrefix + '_rnaseqaux',
-					itemId: "rnaseqauxFileSelector",
-					helpTip: "Upload the quantification file for the gene expression. This file is used to calculate the correlation of the expression of the genes and their associated features. Using this correlation we can filter and order the features that will be assigned to each gene. See above the accepted format for the file."
-				}, {
-					xtype: 'textfield',
-					fieldLabel: 'File Type',
-					name: this.namePrefix + '_rnaseqaux_file_type',
-					hidden: true,
-					itemId: "rnaseqauxFileTypeSelector",
-					value: "Gene Expression file"
-				},
-				{
-					xtype: 'textfield',
-					hidden: true,
-					fieldLabel: 'Map to',
-					name: this.namePrefix + '_rnaseqaux_match_type',
-					itemId: "rnaseqauxFileMapToSelector",
-					value: 'gene'
-				},
-				/*
-				* OTHER FIELDS
-				*/
-				//report
-				{
-					xtype: 'combo',
-					itemId: "reportMethodField",
-					name: this.namePrefix + '_report',
-					fieldLabel: 'Report',
-					editable: false,
-					allowBlank: false,
-					value: "all",
-					displayField: 'label',
-					valueField: 'value',
-					store: Ext.create('Ext.data.ArrayStore', {
-						fields: ['label', 'value'],
-						data: [
-							["All features", "all"],
-							["Only relevant features (e.g. DE)", "DE"]
-						]
-					}),
-					helpTip: "Choose between consider all features in the quantification file or just those features that are differentially expressed. Default: 'All features'"
-				},
-				{
-					xtype: 'combo',
-					itemId: "scoreMethodField",
-					name: this.namePrefix + '_score_method',
-					fieldLabel: 'Score method',
-					editable: false,
-					allowBlank: false,
-					value: "kendall",
-					displayField: 'label',
-					valueField: 'value',
-					store: Ext.create('Ext.data.ArrayStore', {
-						fields: ['label', 'value'],
-						data: [
-							// ["Fold Change of miRNA expression", "fc"],
-							["Correlation with gene expression (Spearman)", "spearman"],
-							["Correlation with gene expression (Kendall)", "kendall"],
-							["Correlation with gene expression (Pearson)", "pearson"]
-						]
-					}),
-					helpTip:
-					"As en example in miRNA, usually a single miRNA has multiple potential target genes, but not all targets are being " +
-					"regulated by a certain miRNA at certain moment. Consequently, we need to discriminate the real targets for a miRNA."+
-					"If Gene expression (GE) data is available, then we calculate the correlation between each miRNA " +
-					"and each target gene and filter out all those miRNAs that has a lower correlation value than a given threadhold." +
-					"If no GE is available then we filter based on the fold-change for the expression of the miRNAs." +
-					"Default: 'Kendall correlation' if GE is available. 'Fold Change' in other case."
-				},
-				{
-					xtype: 'combo',
-					itemId: "selectionMethodField",
-					name: this.namePrefix + '_selection_method',
-					fieldLabel: 'Selection method',
-					editable: false,
-					allowBlank: false,
-					value: "negative_correlation",
-					displayField: 'label',
-					valueField: 'value',
-					store: Ext.create('Ext.data.ArrayStore', {
-						fields: ['label', 'value'],
-						data: [
-							["by max. fold-change of feature expression", "fc"],
-							["by absolute correlation with gene expression", "abs_correlation"],
-							["by positive correlation with gene expression", "positive_correlation"],
-							["by negative correlation with gene expression", "negative_correlation"]
-						]
-					}),
-					//TODO: THIS HELP TOOL IS NOT DISPLAYED, WHY??
-					helpTip:
-					"Determines how we select the potential features that are regulating a certain gene. " +
-					"For instance, usually miRNA act as inhibitors of gene expression so we should expect an opposite behavior " +
-					"to the regulated gene. A negative correlation will fit better to this expected profile. " +
-					"Default: If gene expression (GE) if avilable, select and order by 'negative correlation'. 'Max fold-change' in other case.",
-					listeners:{
-						change: function(elem, newValue, oldValue){
-							var elem = elem.nextSibling("numberfield");
-							if(newValue === "negative_correlation"){
-								elem.setValue(Math.abs(elem.value) * -1);
-							}else{
-								elem.setValue(Math.abs(elem.value));
-							}
-						}
-					}
-				},
-				{
-					xtype: 'numberfield',
-					itemId: "cutoffField",
-					name: this.namePrefix + '_cutoff',
-					fieldLabel: 'Filter cutoff',
-					value: -0.5,
-					minValue: -1,
-					maxValue: 1,
-					step: 0.1,
-					allowDecimals: true,
-					allowBlank: false,
-					helpTip: "The value for the threadhold. All features with a lower value of correlation or FC will be filterd out from the results. Default: 0.5"
-				},
 				{
 					xtype: 'combo',
 					fieldLabel: 'Enrichment type',
@@ -2158,8 +1933,213 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 						]
 					}),
 					helpTip: "Define how the Fisher contingency table must be done: counting genes, features (i.e: microRNA, proteins...) or associations (combination of genes & features)."
+				},
+				/*TARGETS FILE*/
+				{
+					xtype: "myFilesSelectorButton",
+					fieldLabel: "Associations file",
+					namePrefix: this.namePrefix + '__annotations',
+					itemId: "mirnaTargetsFileSelector",
+					helpTip: "Upload the reference file that relates each feature (i.e. miRNA) with its potential targets. This information is usually extracted from popular databases such as miRbase for miRNAs. See above the accepted format for the file."
+				}, {
+					xtype: 'textfield',
+					fieldLabel: 'File Type',
+					name: this.namePrefix + '_annotations_file_type',
+					hidden: true,
+					itemId: "mirnaTargetsFileTypeSelector",
+					value: "Associations file"
+				}, /*{
+					xtype: "myFilesSelectorButton",
+					fieldLabel: 'Associations file',
+					namePrefix: this.namePrefix + '_associations',
+					itemId: "mainAssociationFileSelector",
+					helpTip: "Upload the 2 column association file associating genes with features or choose it from your data folder."
+				}*/,
+				/*{
+					xtype: "box",
+					itemId: "toogleCorrOptions",
+					hidden: !this.allowToogle,
+					html: '<div class="checkbox" style=" margin: 10px 50px; font-size: 16px; "><input type="checkbox" id="' + this.namePrefix + '_corrOptions"><label for="' + this.namePrefix + '_corrOptions">Additional options using correlation.</label></div>'
+				},*/
+				/* CORRELATION OPTIONS */
+				{
+					xtype: 'box',
+					html: '<hr><p>You can provide a relevant associations file or let the program to automatically retrieve them based on correlation with a gene expression dataset.</p>'
+				},
+				{
+					xtype: "myFilesSelectorButton",
+					fieldLabel: 'Relevant associations file<br>(optional)',
+					namePrefix: this.namePrefix + '_relevant_associations',
+					itemId: "secondaryAssociationFileSelector",
+					helpTip: "Upload the 2 column list of relevant associations (gene - feature) or choose it from your data folder."
+				},
+				{
+					xtype: "box",
+					itemId: "toogleCorrOptions",
+					hidden: !this.allowToogle,
+					html: '<div class="checkbox" style=" margin: 10px 50px; font-size: 14px; "><input type="checkbox" id="' + this.namePrefix + '_corrOptions"><label for="' + this.namePrefix + '_corrOptions">Automatically select relevant associations using correlation.</label></div>'		
+				},
+				/* CORRELATION OPTIONS */
+				{
+					xtype: "container",
+					itemId: "itemsContainerCorrOptions",
+					layout: {
+						align: 'stretch',
+						type: 'vbox'
+					},
+					disabled: true,
+					defaults: {
+						labelAlign: "right",
+						labelWidth: 150,
+						maxLength: 100,
+						maxWidth: 500
+					},
+					items: [
+						{
+							xtype: 'textfield',
+							fieldLabel: 'Omic Name',
+							name: this.namePrefix + '_rnaseqaux_omic_name',
+							hidden: true,
+							itemId: "rnaseqauxOmicNameField",
+							value: "Gene Expression"
+						},
+						{
+							xtype: "myFilesSelectorButton",
+							fieldLabel: "Gene expression dataset"/*<br> (optional)"*/,
+							namePrefix: this.namePrefix + '_rnaseqaux',
+							extraButtons: [{
+								text: 'Use a file from other omic',
+								handler: function() {
+									var me = this;
+									var _callback = function(selectedItem) {
+										if (selectedItem !== null) {
+											me.up("myFilesSelectorButton").queryById("visiblePathField").setValue(selectedItem[0].get("omic") + ": " + selectedItem[0].get("file"));
+											me.up("myFilesSelectorButton").queryById("originField").setValue(selectedItem[0].get("name"));
+										}
+									};
+									Ext.widget("OmicInputSelectorDialog").showDialog(_callback);
+								}
+							}],
+							itemId: "rnaseqauxFileSelector",
+							helpTip: "Upload the quantification file for the gene expression. This file is used to calculate the correlation of the expression of the genes and their associated features. Using this correlation we can filter and order the features that will be assigned to each gene. See above the accepted format for the file."
+						}, {
+							xtype: 'textfield',
+							fieldLabel: 'File Type',
+							name: this.namePrefix + '_rnaseqaux_file_type',
+							hidden: true,
+							itemId: "rnaseqauxFileTypeSelector",
+							value: "Gene Expression file"
+						},
+						{
+							xtype: 'textfield',
+							hidden: true,
+							fieldLabel: 'Map to',
+							name: this.namePrefix + '_rnaseqaux_match_type',
+							itemId: "rnaseqauxFileMapToSelector",
+							value: 'gene'
+						},
+						/*
+						* OTHER FIELDS
+						*/
+						//report
+						{
+							xtype: 'combo',
+							itemId: "reportMethodField",
+							name: this.namePrefix + '_report',
+							fieldLabel: 'Report',
+							editable: false,
+							allowBlank: false,
+							value: "all",
+							displayField: 'label',
+							valueField: 'value',
+							store: Ext.create('Ext.data.ArrayStore', {
+								fields: ['label', 'value'],
+								data: [
+									["All features", "all"],
+									["Only relevant features (e.g. DE)", "DE"]
+								]
+							}),
+							helpTip: "Choose between consider all features in the quantification file or just those features that are differentially expressed. Default: 'All features'"
+						},
+						{
+							xtype: 'combo',
+							itemId: "scoreMethodField",
+							name: this.namePrefix + '_score_method',
+							fieldLabel: 'Score method',
+							editable: false,
+							allowBlank: false,
+							value: "kendall",
+							displayField: 'label',
+							valueField: 'value',
+							store: Ext.create('Ext.data.ArrayStore', {
+								fields: ['label', 'value'],
+								data: [
+									// ["Fold Change of miRNA expression", "fc"],
+									["Correlation with gene expression (Spearman)", "spearman"],
+									["Correlation with gene expression (Kendall)", "kendall"],
+									["Correlation with gene expression (Pearson)", "pearson"]
+								]
+							}),
+							helpTip:
+							"As en example in miRNA, usually a single miRNA has multiple potential target genes, but not all targets are being " +
+							"regulated by a certain miRNA at certain moment. Consequently, we need to discriminate the real targets for a miRNA."+
+							"If Gene expression (GE) data is available, then we calculate the correlation between each miRNA " +
+							"and each target gene and filter out all those miRNAs that has a lower correlation value than a given threadhold." +
+							"If no GE is available then we filter based on the fold-change for the expression of the miRNAs." +
+							"Default: 'Kendall correlation' if GE is available. 'Fold Change' in other case."
+						},
+						{
+							xtype: 'combo',
+							itemId: "selectionMethodField",
+							name: this.namePrefix + '_selection_method',
+							fieldLabel: 'Selection method',
+							editable: false,
+							allowBlank: false,
+							value: "negative_correlation",
+							displayField: 'label',
+							valueField: 'value',
+							store: Ext.create('Ext.data.ArrayStore', {
+								fields: ['label', 'value'],
+								data: [
+									["by max. fold-change of feature expression", "fc"],
+									["by absolute correlation with gene expression", "abs_correlation"],
+									["by positive correlation with gene expression", "positive_correlation"],
+									["by negative correlation with gene expression", "negative_correlation"]
+								]
+							}),
+							//TODO: THIS HELP TOOL IS NOT DISPLAYED, WHY??
+							helpTip:
+							"Determines how we select the potential features that are regulating a certain gene. " +
+							"For instance, usually miRNA act as inhibitors of gene expression so we should expect an opposite behavior " +
+							"to the regulated gene. A negative correlation will fit better to this expected profile. " +
+							"Default: If gene expression (GE) if avilable, select and order by 'negative correlation'. 'Max fold-change' in other case.",
+							listeners:{
+								change: function(elem, newValue, oldValue){
+									elem = elem.nextSibling("numberfield");
+									if(newValue === "negative_correlation"){
+										elem.setValue(Math.abs(elem.value) * -1);
+									}else{
+										elem.setValue(Math.abs(elem.value));
+									}
+								}
+							}
+						},
+						{
+							xtype: 'numberfield',
+							itemId: "cutoffField",
+							name: this.namePrefix + '_cutoff',
+							fieldLabel: 'Filter cutoff',
+							value: -0.5,
+							minValue: -1,
+							maxValue: 1,
+							step: 0.1,
+							allowDecimals: true,
+							allowBlank: false,
+							helpTip: "The value for the threadhold. All features with a lower value of correlation or FC will be filterd out from the results. Default: 0.5"
+						}
+					]
 				}
-			]
+		]
 		}],
 		setContent: function(target, values) {
 			me.setContent(target, values);
@@ -2168,11 +2148,7 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 			var valid = true;
 			var component = this.queryById("itemsContainerAlt");
 			if (!component.isVisible()) {
-				component = this.queryById("itemsContainerAssociations");
-
-				if (!component.isVisible()) {
-					component = this.queryById("itemsContainer");
-				}
+				component = this.queryById("itemsContainer");
 			}
 			var items = component.query("field");
 			for (var i in items) {
@@ -2187,21 +2163,22 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 				valid = false;
 				component.queryById("mirnaTargetsFileSelector").markInvalid("Please, provide a features targets reference file.");
 			}
-			//TODO: REMOVE
-			if (component.queryById("rnaseqauxFileSelector") && component.queryById("rnaseqauxFileSelector").getValue() === "") {
+
+			var corrEnabled = $("#" + me.namePrefix + "_corrOptions").is(':checked');
+
+			if (corrEnabled && component.queryById("rnaseqauxFileSelector") && component.queryById("rnaseqauxFileSelector").getValue() === "") {
 				valid = false;
 				component.queryById("rnaseqauxFileSelector").markInvalid("Please, provide a transcriptomics file.");
+			} else if(! corrEnabled && component.queryById("secondaryAssociationFileSelector") && component.queryById("secondaryAssociationFileSelector").getValue() === "") {
+				valid = false;
+				component.queryById("secondaryAssociationFileSelector").markInvalid("Please, provide a relevant associations file or enable the automatic mode instead.");
 			}
 			return valid;
 		},
 		isEmpty: function() {
 			var component = this.queryById("itemsContainerAlt");
 			if (!component.isVisible()) {
-				component = this.queryById("itemsContainerAssociations");
-
-				if (!component.isVisible()) {
-					component = this.queryById("itemsContainer");
-				}
+				component = this.queryById("itemsContainer");
 			}
 			var empty = true;
 			if (component.queryById("mainFileSelector").getValue() !== "") {
@@ -2219,14 +2196,20 @@ function MiRNAOmicSubmittingPanel(nElem, options) {
 
 				$("#" + me.namePrefix + "_mapRegions").change(function() {
 					//$("#" + me.namePrefix + "_useAssociations").prop('disabled', $(this).is(':checked'));
-					me.getComponent().queryById("toogleUseAssociations").setVisible(! $(this).is(':checked'));
+					// me.getComponent().queryById("toogleUseAssociations").setVisible(! $(this).is(':checked'));
 					me.toogleContent();
 				});
 
-				$("#" + me.namePrefix + "_useAssociations").change(function() {
+				// $("#" + me.namePrefix + "_useAssociations").change(function() {
+				// 	// $("#" + me.namePrefix + "_mapRegions").prop('disabled', $(this).is(':checked'));
+				// 	me.getComponent().queryById("toogleMapRegions").setVisible(! $(this).is(':checked'));
+				// 	me.toogleContent("itemsContainerAssociations");
+				// });
+
+				$("#" + me.namePrefix + "_corrOptions").change(function() {
 					// $("#" + me.namePrefix + "_mapRegions").prop('disabled', $(this).is(':checked'));
-					me.getComponent().queryById("toogleMapRegions").setVisible(! $(this).is(':checked'));
-					me.toogleContent("itemsContainerAssociations");
+					me.getComponent().queryById("secondaryAssociationFileSelector").down('container').setDisabled($(this).is(':checked'));
+					me.getComponent().queryById("itemsContainerCorrOptions").setDisabled(! $(this).is(':checked'));
 				});
 
 				$(this.getEl().dom).find("a.deleteOmicBox").click(function() {

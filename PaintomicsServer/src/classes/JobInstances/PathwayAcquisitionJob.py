@@ -23,7 +23,7 @@ from os import path as os_path, system as os_system, makedirs as os_makedirs
 from csv import reader as csv_reader
 from zipfile import ZipFile as zipFile
 
-from subprocess import check_call, STDOUT, CalledProcessError
+from subprocess import check_call, call, STDOUT, CalledProcessError
 from src.common.Util import unifyAndSort
 
 from collections import defaultdict, Counter
@@ -118,7 +118,7 @@ class PathwayAcquisitionJob(Job):
             # First position: dictionary with identifiers.
             # With multiple databases "Total" is the maximum
             # Compounds omics only have one value (no dict)
-            totalMapped = omicSummary[0].get("Total", omicSummary[0].itervalues().next()) if not isinstance(omicSummary[0], (int, long)) else omicSummary[0]
+            totalMapped = omicSummary[0].get("Total", list(omicSummary[0].values())[0]) if not isinstance(omicSummary[0], (int)) else omicSummary[0]
 
             # Second position: considering total if it exists
             totalUnmapped = omicSummary[1]
@@ -176,10 +176,10 @@ class PathwayAcquisitionJob(Job):
         if(inputOmic.get("isExample", False) == True):
             return nConditions, error
         else:
-            valuesFileName = self.getInputDir() + valuesFileName
-            relevantFileName = self.getInputDir() + str(relevantFileName)
-            associationsFileName = self.getInputDir() + str(associationsFileName)
-            relevantAssociationsFileName = self.getInputDir() + str(relevantAssociationsFileName)
+            valuesFileName = "{path}/{file}".format(path=self.getInputDir(), file=valuesFileName)
+            relevantFileName = "{path}/{file}".format(path=self.getInputDir(), file=relevantFileName)
+            associationsFileName = "{path}/{file}".format(path=self.getInputDir(), file=associationsFileName)
+            relevantAssociationsFileName = "{path}/{file}".format(path=self.getInputDir(), file=relevantAssociationsFileName)
 
         #*************************************************************************
         # STEP 1. VALIDATE THE ASSOCIATIONS AND RELEVANT ASSOCIATIONS FILES
@@ -284,7 +284,7 @@ class PathwayAcquisitionJob(Job):
                     # STEP 2.4 IF CONTAINS NOT VALID VALUES, ADD ERROR
                     #**************************************************************************************
                     try:
-                        map(float, line[1:len(line)])
+                        list(map(float, line[1:len(line)]))
                     except:
                         if(" ".join(line[1:len(line)]).count(",") > 0):
                             erroneousLines[nLine] = erroneousLines.get(nLine,  "") + "Perhaps you are using commas instead of dots as decimal mark?"
@@ -470,8 +470,8 @@ class PathwayAcquisitionJob(Job):
         #****************************************************************
         # Step 1. GET THE KEGG DATA AND PREPARE VARIABLES
         #****************************************************************
-        inputGenes = self.getInputGenesData().values()
-        inputCompounds = self.getInputCompoundsData().values()
+        inputGenes = list(self.getInputGenesData().values())
+        inputCompounds = list(self.getInputCompoundsData().values())
         pathwaysList = KeggInformationManager().getAllPathwaysByOrganism(self.getOrganism())
 
         enrichmentByOmic = {x.get("omicName"): x.get("enrichment", "genes") for x in
@@ -482,12 +482,12 @@ class PathwayAcquisitionJob(Job):
         organismCompounds = defaultdict(lambda: defaultdict(set))
 
         # GET THE IDS FOR ALL PATHWAYS FOR CURRENT SPECIE
-        for pathwayID, pathway in pathwaysList.iteritems():
+        for pathwayID, pathway in pathwaysList.items():
             organismGenes[pathway["source"]][pathwayID], organismCompounds[pathway["source"]][pathwayID] = KeggInformationManager().getAllFeatureIDsByPathwayID(self.getOrganism(), pathwayID)
 
         # Calculate the total number of genes and compounds per database
-        totalGenes = {sourceDB: set(chain.from_iterable(pathways.itervalues())) for sourceDB, pathways in organismGenes.iteritems()}
-        totalCompounds = {sourceDB: set(chain.from_iterable(pathways.itervalues())) for sourceDB, pathways in organismCompounds.iteritems()}
+        totalGenes = {sourceDB: set(chain.from_iterable(pathways.values())) for sourceDB, pathways in organismGenes.items()}
+        totalCompounds = {sourceDB: set(chain.from_iterable(pathways.values())) for sourceDB, pathways in organismCompounds.items()}
 
         totalFeaturesByOmic, totalRelevantFeaturesByOmic = self.calculateTotalFeaturesByOmic(enrichmentByOmic, totalGenes, totalCompounds)
         totalInputMatchedCompounds = len(self.getInputCompoundsData())
@@ -535,22 +535,25 @@ class PathwayAcquisitionJob(Job):
                     pathway.setClassification(keggInformationManager.getPathwayClassificationByID(jobInstance.getOrganism(), pathwayID))
                     pathway.setSource(sourceDB)
 
+                    # for omic in jobInstance.getGeneBasedInputOmics()
+                    #
+
                     matchedPathways[pathwayID] = pathway
 
         manager=Manager()
         matchedPathways=manager.dict() #WILL STORE THE OUTPUT FROM THE THREADS
         nPathwaysPerThread = int(ceil(len(pathwaysList)/nThreads)) + 1  #GET THE NUMBER OF PATHWAYS TO BE PROCESSED PER THREAD
-        pathwaysListParts = chunks(pathwaysList.keys(), nPathwaysPerThread) #SPLIT THE ARRAY IN n PARTS
+        pathwaysListParts = chunks(list(pathwaysList.keys()), nPathwaysPerThread) #SPLIT THE ARRAY IN n PARTS
         threadsList = []
 
         # Flattened dict
-        allGenesInPathway = {pathwayID: pathway for dbSource, dbPathways in organismGenes.iteritems() for
+        allGenesInPathway = {pathwayID: pathway for dbSource, dbPathways in organismGenes.items() for
                              pathwayID, pathway in
-                             dbPathways.iteritems()}
+                             dbPathways.items()}
 
-        allCompoundsInPathway = {pathwayID: pathway for dbSource, dbPathways in organismCompounds.iteritems() for
+        allCompoundsInPathway = {pathwayID: pathway for dbSource, dbPathways in organismCompounds.items() for
                                  pathwayID, pathway in
-                                 dbPathways.iteritems()}
+                                 dbPathways.items()}
 
         #LAUNCH THE THREADS
         for pathwayIDsList in pathwaysListParts:
@@ -583,23 +586,23 @@ class PathwayAcquisitionJob(Job):
         pvalues_list = defaultdict(dict)
         combined_pvalues_list = defaultdict(dict)
 
-        for pathway_id, pathway in self.getMatchedPathways().iteritems():
-            for omic, pvalue in pathway.getSignificanceValues().iteritems():
+        for pathway_id, pathway in self.getMatchedPathways().items():
+            for omic, pvalue in pathway.getSignificanceValues().items():
                 pvalues_list[omic][pathway_id] = pvalue[2]
 
-            for method, combined_pvalue in pathway.getCombinedSignificancePvalues().iteritems():
+            for method, combined_pvalue in pathway.getCombinedSignificancePvalues().items():
                 combined_pvalues_list[method][pathway_id] = combined_pvalue
 
-        adjusted_pvalues = {omic: adjustPvalues(omicPvalues) for omic, omicPvalues in pvalues_list.iteritems()}
-        adjusted_combined_pvalues = {method: adjustPvalues(methodCombinedPvalues) for method, methodCombinedPvalues in combined_pvalues_list.iteritems()}
+        adjusted_pvalues = {omic: adjustPvalues(omicPvalues) for omic, omicPvalues in pvalues_list.items()}
+        adjusted_combined_pvalues = {method: adjustPvalues(methodCombinedPvalues) for method, methodCombinedPvalues in combined_pvalues_list.items()}
 
         # Set the adjusted p-value on a pathway basis
-        for pathway_id, pathway in self.getMatchedPathways().iteritems():
-            for omic, pvalue in pathway.getSignificanceValues().iteritems():
-                pathway.setOmicAdjustedSignificanceValues(omic, {adjust_method: pvalues[pathway_id] for adjust_method, pvalues in adjusted_pvalues[omic].iteritems()})
+        for pathway_id, pathway in self.getMatchedPathways().items():
+            for omic, pvalue in pathway.getSignificanceValues().items():
+                pathway.setOmicAdjustedSignificanceValues(omic, {adjust_method: pvalues[pathway_id] for adjust_method, pvalues in adjusted_pvalues[omic].items()})
 
-            for method, combined_pvalue in pathway.getCombinedSignificancePvalues().iteritems():
-                 pathway.setMethodAdjustedCombinedSignificanceValues(method, {adjust_method: combined_pvalues[pathway_id] for adjust_method, combined_pvalues in adjusted_combined_pvalues[method].iteritems()})
+            for method, combined_pvalue in pathway.getCombinedSignificancePvalues().items():
+                 pathway.setMethodAdjustedCombinedSignificanceValues(method, {adjust_method: combined_pvalues[pathway_id] for adjust_method, combined_pvalues in adjusted_combined_pvalues[method].items()})
 
         logging.info("SUMMARY: " + str(totalMatchedKeggPathways) +  " Matched Pathways of "  + str(totalKeggPathways) + "in KEGG; Total input Genes = " + str(totalInputMatchedGenes) + "; SUMMARY: Total input Compounds  = " + str(totalInputMatchedCompounds))
 
@@ -634,9 +637,9 @@ class PathwayAcquisitionJob(Job):
         counterNames = defaultdict(lambda: defaultdict(lambda: defaultdict(bool)))
 
         # Total features depends on the source DB
-        totalFeatures = {dbSource: dbGenes.union(totalCompounds.get(dbSource)) for dbSource, dbGenes in totalGenes.iteritems()}
+        totalFeatures = {dbSource: dbGenes.union(totalCompounds.get(dbSource)) for dbSource, dbGenes in totalGenes.items()}
 
-        for feature in self.getInputCompoundsData().values() + self.getInputGenesData().values():
+        for feature in chain(self.getInputCompoundsData().values(), self.getInputGenesData().values()):
             # Count only those present in at least one pathway
             if feature.getID() in totalFeatures.get(feature.getMatchingDB()):
                 for omicValue in feature.getOmicsValues():
@@ -651,10 +654,10 @@ class PathwayAcquisitionJob(Job):
             else:
                 logging.error("STEP2 - Feature not present in at least one pathway " + feature.getID())
 
-        for sourceDB, countersDB in counterNames.iteritems():
-            for omicName, featuresNames in countersDB.iteritems():
+        for sourceDB, countersDB in counterNames.items():
+            for omicName, featuresNames in countersDB.items():
                 totalFeaturesByOmic[sourceDB][omicName] = len(featuresNames.keys())
-                totalRelevantFeaturesByOmic[sourceDB][omicName] = featuresNames.values().count(True)
+                totalRelevantFeaturesByOmic[sourceDB][omicName] = list(featuresNames.values()).count(True)
 
         return totalFeaturesByOmic, totalRelevantFeaturesByOmic
 
@@ -722,10 +725,16 @@ class PathwayAcquisitionJob(Job):
                 for omicValue in compound.getOmicsValues():
                     #Add the original name to the table for the corresponding omics type, specifying if the feature is relevant or not.
                     # Metabolomics --> Glutamine --> [prev value for isRelevant] or [current feature isRelevant]
-                    #TODO: what if L-Glutamine coming from "Glutamine" is in the list of relevants but Glutamine not? Now we consider Glutamine as relevant
-                    counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] = (counterNames[omicValue.getOmicName()][omicValue.getOriginalName()] or omicValue.isRelevant())
+                    enrichmentType = enrichmentByOmic[omicValue.getOmicName()]
+                    enrichmentProperty = enrichments.get(enrichmentType)(omicValue).lower()
 
-        for omicName, featureNames in counterNames.iteritems():
+                    # Only for association enrichment type the relevant feature must come from the associations files.
+                    relevantValue = omicValue.isRelevantAssociation() if enrichmentType == 'associations' else omicValue.isRelevant()
+
+                    #TODO: what if L-Glutamine coming from "Glutamine" is in the list of relevants but Glutamine not? Now we consider Glutamine as relevant
+                    counterNames[omicValue.getOmicName()][enrichmentProperty] = (counterNames[omicValue.getOmicName()][enrichmentProperty] or relevantValue)
+
+        for omicName, featureNames in counterNames.items():
             for isRelevant in featureNames.values():
                 #SIGNIFICANCE-VALUES LIST STORES FOR EACH OMIC 3 VALUES: [TOTAL MATCHED, TOTAL RELEVANT, PVALUE]
                 #IN THIS LINE WE JUST ADD A NEW MATCH AND, IF RELEVANT, A NEW RELEVANT FEATURE, BUT KEEP PVALUE TO -1
@@ -733,7 +742,7 @@ class PathwayAcquisitionJob(Job):
                 pathwayInstance.addSignificanceValues(omicName, isRelevant)
 
         if(isValidPathway):
-            for omicName, values in pathwayInstance.getSignificanceValues().iteritems():
+            for omicName, values in pathwayInstance.getSignificanceValues().items():
                 # values = pathwayInstance.getSignificanceValues().get(omicName)
                 #FOR EACH OMIC TYPE, SIGNIFICANCE IS CALCULATED TAKING IN ACCOUNT, AND CONSIDERING ONLY THE ORIGINAL NAME:
                 #  - THE TOTAL NUMBER OF MATCHED FEATURES FOR CURRENT OMIC (i.e. IF WE INPUT PROTEINS, THE TOTAL NUMBER WILL BE
@@ -901,13 +910,13 @@ class PathwayAcquisitionJob(Job):
 
                     with open(metagenesFileName, 'rU') as inputDataFile:
                         for line in csv_reader(inputDataFile, delimiter="\t"):
-                            if self.matchedPathways.has_key(line[0]):
+                            if line[0] in self.matchedPathways:
                                 self.matchedPathways.get(line[0]).addMetagenes(inputOmic.get("omicName"), {"metagene": line[1], "cluster": line[2], "values" : line[3:] })
                     inputDataFile.close()
             except CalledProcessError as ex:
                 logging.error("STEP2 - Error while generating metagenes information for " + inputOmic.get("omicName"))
 
-        os_system("mv " + self.getTemporalDir() +  "/" + "*.png " +  self.getOutputDir())
+        call("mv " + self.getTemporalDir() +  "/" + "*.png " +  self.getOutputDir(), shell = True)
         return self
 
     #JSON <-> BSON FUNCTIONS ------------------------------------------------------------------------------------------------------
@@ -923,7 +932,7 @@ class PathwayAcquisitionJob(Job):
             if(attr == "matchedPathways"):
                 pathwayInstance = None
                 self.matchedPathways.clear()
-                for (pathwayID, pathwayData) in value.iteritems():
+                for (pathwayID, pathwayData) in value.items():
                     pathwayInstance = Pathway(pathwayID)
                     pathwayInstance.parseBSON(pathwayData)
                     self.addMatchedPathway(pathwayInstance)
@@ -940,14 +949,14 @@ class PathwayAcquisitionJob(Job):
             elif(attr == "inputCompoundsData"):
                 compoundInstance = None
                 self.inputCompoundsData.clear()
-                for (compoundID, compoundData) in value.iteritems():
+                for (compoundID, compoundData) in value.items():
                     compoundInstance = Compound(compoundID)
                     compoundInstance.parseBSON(compoundData)
                     self.addInputCompoundData(compoundInstance)
             elif(attr == "inputGenesData"):
                 geneInstance = None
                 self.inputGenesData.clear()
-                for (geneID, genData) in value.iteritems():
+                for (geneID, genData) in value.items():
                     geneInstance = Gene(geneID)
                     geneInstance.parseBSON(genData)
                     self.addInputGeneData(geneInstance)
@@ -964,7 +973,7 @@ class PathwayAcquisitionJob(Job):
         @return:
         """
         bson = {}
-        for attr, value in self.__dict__.iteritems():
+        for attr, value in self.__dict__.items():
             # Special case: "foundCompounds" is a list (not a dict) that contains recursive object data
             if not isinstance(value, dict) and ( ["svgDir", "inputDir", "outputDir", "temporalDir", "foundCompounds"].count(attr) == 0) :
                 bson[attr] = value
@@ -972,17 +981,17 @@ class PathwayAcquisitionJob(Job):
             elif(recursive == True):
                 if(attr == "matchedPathways"):
                     matchedPathways = {}
-                    for (pathwayID, pathwayInstance) in value.iteritems():
+                    for (pathwayID, pathwayInstance) in value.items():
                         matchedPathways[pathwayID] = pathwayInstance.toBSON()
                     value = matchedPathways
                 elif(attr == "inputCompoundsData"):
                     compounds = {}
-                    for (compoundID, compoundInstance) in value.iteritems():
+                    for (compoundID, compoundInstance) in value.items():
                         compounds[compoundID] = compoundInstance.toBSON()
                     value = compounds
                 elif(attr == "inputGenesData"):
                     genes = {}
-                    for (geneID, geneInstance) in value.iteritems():
+                    for (geneID, geneInstance) in value.items():
                         genes[geneID] = geneInstance.toBSON()
                     value = genes
                 elif(attr == "foundCompounds"):
