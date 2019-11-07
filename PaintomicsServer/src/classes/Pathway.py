@@ -20,6 +20,7 @@
 
 from PathwayGraphicalData import PathwayGraphicalData
 from src.common.Util import Model
+from collections import defaultdict
 
 class Pathway(Model):
     #******************************************************************************************************************
@@ -42,6 +43,7 @@ class Pathway(Model):
         #self.combinedSignificancePvalue=1
         self.combinedSignificancePvalues = {}
         self.adjustedCombinedSignificanceValues = {}
+        self.masterRegulators = defaultdict(list)
         #GRAPHICAL INFORMATION
         self.graphicalOptions = None
 
@@ -96,6 +98,13 @@ class Pathway(Model):
         self.metagenes[omicName].append(metagene)
     def resetMetagenes(self, omicName):
         self.metagenes[omicName] = []
+
+    def setMasterRegulators(self, omic, masterRegulators):
+        self.masterRegulators[omic] = masterRegulators
+    def getMasterRegulators(self):
+        return self.masterRegulators
+    def addMasterRegulator(self, omic, masterRegulator):
+        self.masterRegulators[omic].add(masterRegulator)
 
     #OmicName -> [totalFeatures, totalRelevantFeatures, pValue]
     def setSignificanceValues(self, significanceValues):

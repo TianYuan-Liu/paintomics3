@@ -1113,13 +1113,19 @@ i.relevantFeature:before {
 	content: "\f005";
 	font: normal normal normal 9px/1 FontAwesome;
 	color: red;
-	padding-left: 8px;
+	padding-left: 5px;
 }
 i.relevantAssociationFeature:before {
 	content: "\f005";
 	font: normal normal normal 9px/1 FontAwesome;
 	color: #f4c800;
-	padding-left: 8px;
+	padding-left: 5px;
+}
+i.masterRegulator:before {
+	content: "\f024";
+	font: normal normal normal 9px/1 FontAwesome;
+	color: #53af93;
+	padding-left: 5px;
 }
 .x-tab {
 	background: none;
