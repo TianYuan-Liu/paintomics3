@@ -1099,3 +1099,110 @@ Ext.define('Paintomics.view.common.GTFSelectorDialog', {
 		};
 	}
 });
+
+Ext.define('Paintomics.view.common.OmicInputSelectorDialog', {
+	extend: 'Ext.window.Window',
+	alias: 'widget.OmicInputSelectorDialog',
+	selectedItem: null,
+	_callback: null,
+	buttons: [{
+		text: 'Accept',
+		itemId: "acceptButton",
+		handler: function() {
+			this.up("window").selectedItem = this.up("window").queryById("OmicInputFilesGrid").getSelectionModel().getSelection();
+			this.up("window").close();
+		}
+	}, {
+		text: 'Cancel',
+		handler: function() {
+			this.up("window").selectedItem = null;
+			this.up("window").close();
+		}
+	}],
+	showDialog: function(_callback) {
+		this._callback = _callback;
+		this.setHeight(Ext.getBody().getViewSize().height * 0.9);
+		this.setWidth(Ext.getBody().getViewSize().width * 0.8);
+		this.center();
+		this.show();
+	},
+	initComponent: function() {
+		var me = this;
+
+		var fileSelectors = Ext.ComponentQuery.query('[xtype=myFilesSelectorButton]').map(function(selectorItem) {
+			var selectorOmicName = selectorItem.up("container").items.get("omicNameField");
+
+			if (selectorOmicName) {
+				var selectorOmicFile = selectorItem.down("container").items.get("visiblePathField");
+
+				if (selectorOmicFile && selectorOmicFile.getRawValue().length) {
+					// Order return: [omic, file, name]
+					return [
+						selectorOmicName.getValue(),
+						selectorOmicFile.getRawValue(),
+						selectorOmicFile.getName()
+					];
+				}
+			}
+
+			return(null);
+		}).filter(x => x !== null);
+
+		var DM_InputList = Ext.widget({
+			xtype: "container",
+			itemId: "DM_OmicInputFileListView",
+			items: [{
+				xtype: "box",
+				flex: 1,
+				html: '<h3>Other form elements</h3>'
+			}, {
+				xtype: "grid",
+				itemId: "OmicInputFilesGrid",
+				columnWidth: 300,
+				viewConfig: {
+					deferEmptyText: false,
+					emptyText: 'No data available. You must select a file in other omic in order to use this feature.',
+				},
+				store: Ext.create('Ext.data.ArrayStore', {
+					fields: ['omic', 'file', 'name'],
+					data: fileSelectors.length ? fileSelectors : null //{"items": fileSelectors} : null
+				}),
+				columns: [{
+					text: 'Omic name',
+					dataIndex: 'omic',
+					flex: 1
+				}, {
+					text: 'Filename',
+					dataIndex: 'file',
+					flex: 1
+				}]
+			}]/*,
+			listeners: {
+				boxready: function() {
+					me.updateContent();
+				}
+			}*/
+		});
+
+		//DM_InputList.setController(application.getController("DataManagementController"));
+
+		me.items = [DM_InputList];
+		me.callParent(arguments);
+
+		me.listeners = {
+			boxready: function() {
+				var me = this;
+				this.queryById("OmicInputFilesGrid").on({
+					itemdblclick: function() {
+						me.queryById("acceptButton").el.dom.click();
+					}
+				});
+			},
+			close: function() {
+				if (this._callback !== null) {
+					this._callback(this.selectedItem);
+				}
+			}
+		};
+	}
+});

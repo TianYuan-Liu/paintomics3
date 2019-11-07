@@ -138,10 +138,47 @@ function JobController() {
 
 				//STEP3. CREATE A TEMPORAL FORM TO SUBMIT THE DATA
 				var itemsContainer = subview.queryById("itemsContainer");
-				var temporalForm = Ext.widget({xtype: "form", items: [itemsContainer]});
+				var extraElements = {};
+				var extraElementsContainer = {};
+
+				// Append file input elements from other forms, in case something was selected
+				itemsContainer.query("myFilesSelectorButton").forEach(function(formElement) {
+					var itemOrigin = formElement.down("[itemId=originField]").getValue();
+
+					if (itemOrigin.includes("_filelocation")) {
+						var originalFileInput = Ext.ComponentQuery.query("[name=" + itemOrigin + "]")[0];
+
+						if (originalFileInput != undefined) {
+							var selectorButton = originalFileInput.up("myFilesSelectorButton");
+							var selectorCls = selectorButton.up("container");
+
+							// Append to elements of new form
+							extraElements[itemOrigin] = selectorButton;
+
+							// Keep track of the parent element & position to restore it after form submitting
+							// or in case of error.
+							extraElementsContainer[itemOrigin] = [selectorCls, selectorCls.items.indexOf(selectorButton)];
+						}
+					}
+				});
+
+				var temporalForm = Ext.widget({xtype: "form", items: [itemsContainer, ...Object.values(extraElements)]});
 
 				// DEFINE THE URL BASED ON THE TYPE OF OMIC
 				var formURL = subview.cls.search("regionBasedOmic") != -1 ? regionURL : miRNAURL;
+
+				var _restoreElements = function() {
+					subview.add(temporalForm.queryById("itemsContainer"));
+
+					Object.keys(extraElementsContainer).forEach(function(extraItem) {
+						var itemContainer = extraElementsContainer[extraItem][0];
+						var itemPosition = extraElementsContainer[extraItem][1];
+
+						itemContainer.insert(itemPosition, extraElements[extraItem]);
+					});
+
+					Ext.destroy(temporalForm);
+				};
 
 				jobView.pendingRequests++;
 
@@ -152,8 +189,10 @@ function JobController() {
 						var response = JSON.parse(action.response.responseText);
 
 						showInfoMessage("Job " + response.jobID + " is waiting at job queue...", {logMessage: "Now Job is in the queue...", showSpin: true, append: true, itemId: response.jobID, icon: "clock-o"});
-						subview.add(temporalForm.queryById("itemsContainer"));
-						Ext.destroy(temporalForm);
+
+						/* Restore elements used to create the temporal form */
+						_restoreElements();			
+
 						/**
 						* Execute this code after the job finished at the QUEUE
 						* @param {type} jobID
@@ -169,6 +208,8 @@ function JobController() {
 							other.subview.setContent("itemsContainerAlt", {
 								mainFile: response.mainOutputFileName,
 								secondaryFile: response.secondOutputFileName,
+								thirdFile: response.thirdOutputFileName || null,
+								fourthFile: response.fourthOutputFileName || null,
 								title: itemsContainer.queryById("omicNameField").getValue(),
 								configVars: response.description,
 								enrichmentType: response.featureEnrichment
@@ -190,10 +231,12 @@ function JobController() {
 							jobView.failedRequests++;
 							jobView.pendingRequests--;
 
-							var response = JSON.parse(response.responseText);
-							var parsedMessage = response.message.replace(/\[b\]/g, "<b>").replace(/\[\/b\]/g, "</b>").replace(/\[br\]/g, "</br>").replace(/\[ul\]/g, "<ul>").replace(/\[\/ul\]/g, "</ul>").replace(/\[li\]/g, "<li>").replace(/\[\/li\]/g, "</li>").replace(/ - /g, "<br/>");
-
-							other.subview.add(Ext.widget({xtype: "box", itemId: "errorMessage", html: '<h3 style="color: #EC696E;  font-size: 20px;"><i class="fa fa-cog fa-spin"></i> Error when processing the request file.<br><span style="font-size:14px;">' + parsedMessage + '</span></h3>'}));
+							if (response.responseText) {
+								var response = JSON.parse(response.responseText);
+								var parsedMessage = response.message.replace(/\[b\]/g, "<b>").replace(/\[\/b\]/g, "</b>").replace(/\[br\]/g, "</br>").replace(/\[ul\]/g, "<ul>").replace(/\[\/ul\]/g, "</ul>").replace(/\[li\]/g, "<li>").replace(/\[\/li\]/g, "</li>").replace(/ - /g, "<br/>");
+	
+								other.subview.add(Ext.widget({xtype: "box", itemId: "errorMessage", html: '<h3 style="color: #EC696E;  font-size: 20px;"><i class="fa fa-cog fa-spin"></i> Error when processing the request file.<br><span style="font-size:14px;">' + parsedMessage + '</span></h3>'}));	
+							}
 
 							if (jobView.pendingRequests === 0) {
 								showErrorMessage("Ops!... Something went wrong during the request files processing.", {
@@ -208,7 +251,12 @@ function JobController() {
 							sendRequest(jobView, genericBasedOmic);
 						}
 					},
-					failure: extJSErrorHandler
+					failure: function(form, responseObj) {
+						/* Restore elements used to create the temporal form */
+						_restoreElements();
+
+						extJSErrorHandler(form, responseObj);
+					}
 				});
 			};
 
