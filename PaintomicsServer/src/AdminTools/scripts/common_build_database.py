@@ -645,6 +645,13 @@ def processMapManMappingData():
         stderr.write("\n\nUnable to find the NCBI 2 KEGG MAPPING file: " + ncbi_file_name + "\n")
         exit(1)
 
+    # File containing MapMan metabolites to MapMan feature IDs
+    mapman_cpd_resource = COMMON_RESOURCES.get("mapman").get("metabolites")
+    mapman_cpd_file_name = DATA_DIR + "mapping/" + mapman_cpd_resource.get("output")
+    if not os.path.isfile(mapman_cpd_file_name):
+        stderr.write("\n\nUnable to find the MapMan Compound 2 MapMan ID MAPPING file: " + mapman_cpd_file_name + "\n")
+        exit(1)
+
     # File containing MapMan genes to MapMan feature IDs
     mapman_resource = EXTERNAL_RESOURCES.get("mapman_gene")[0]
     mapman_file_name = DATA_DIR + "mapping/" + mapman_resource.get("output")
@@ -658,6 +665,9 @@ def processMapManMappingData():
     if not os.path.isfile(mapman_kegg_file_name):
         stderr.write("Unable to find the MapMan Gene to KEGG ID MAPPING file: " + mapman_kegg_file_name)
         exit(1)
+
+    # Insert compounds
+    processMapMan2CompoundSymbolMappingData(mapman_cpd_file_name)
 
     # Initialize the mapping_dict NCBI Gene ID => [many possible KEGG_IDs]
     ncbi_mapping_dict = defaultdict(list)
@@ -928,6 +938,47 @@ def processKEGGCommonData(dirName, ROOT_DIRECTORY):
     stderr.write("\nCREATING GLOBAL DATABASES...\n")
     createGlobalDatabase()
 
+def processMapMan2CompoundSymbolMappingData(file_name):
+    #Get line count (for percentage)
+    total_lines = int(check_output(['wc', '-l', file_name]).decode('utf-8').split(" ")[0])
+
+    # The process will also insert information about compounds, thus discarding the previous database
+    # and importing a new one, needing again the KEGG compounds.
+    processKEGG2CompoundSymbolMappingData(DATA_DIR + "../common/compounds_all.list")
+
+    #STEP 1. Process files
+    stderr.write("\n\nPROCESSING Mapman 2 Compound MAPPING FILE...\n")
+    with open(file_name, "r") as csvfile:
+        rows = csv.reader(csvfile, delimiter='\t')
+        i =0
+        prev=-1
+        errorMessage=""
+
+        for row in rows:
+            i+=1
+            #prev = showPercentage(i, total_lines, prev, errorMessage)
+            try:
+                mapman_id      = row[0]
+                compound_symbols  = row[1].split(".")[-1].split("|")
+
+                for compound_symbol in compound_symbols:
+                    # KEGG_COMPOUNDS.append({"id" : kegg_id, "name" : compound_symbol.lstrip()})
+                    MAPMAN_COMPOUNDS[compound_symbol.lstrip()] = mapman_id
+            except Exception as ex:
+                errorMessage = "FAILED WHILE PROCESSING Mapman 2 Compound MAPPING FILE [line " + str(i) + "]: "+ str(ex)
+    csvfile.close()
+
+    #STEP 2. DUMP THE TABLE INTO A FILE
+    file = open("/tmp/compounds.tmp", 'a')
+    for cpdName, cpdID in MAPMAN_COMPOUNDS.items():
+        file.write(json.dumps({"id" : cpdID, "name" : cpdName}, separators=(',', ':')) + "\n")
+    file.close()
+
+    # Insert the compounds collection
+    createCompoundsCollection()
+
+    return total_lines
+
 def processKEGG2CompoundSymbolMappingData(file_name):
     #Get line count (for percentage)
     total_lines = int(check_output(['wc', '-l', file_name]).decode('utf-8').split(" ")[0])
@@ -973,6 +1024,8 @@ def processMapManPathwaysData():
     FAILED_LINES["MAPMAN PATHWAYS"] = []
     NODES = {}
     EDGES = []
+
+    REVERSE_MAPMAN_CPD = {v: k for k, v in MAPMAN_COMPOUNDS.items()}
 
     if not len(external_mapping):
         stderr.write("The MapMan dictionary is not filled. Mapping files must be processed first.")
@@ -1100,44 +1153,56 @@ def processMapManPathwaysData():
                         "title": child.get("title", None),
                         "blockFormat": child.get("blockFormat"),
                         "type": child.get("type"),
-                        "visualizationType": child.get("vistualizationType"),
+                        "visualizationType": child.get("visualizationType"),
                         "recursive": True
                     }
 
                     # Each DataArea has at least one 'Identifier' child
                     for featureID in child:
                         # and not already_added.has_key(featureID)
-
-                        # As opposed to KEGG, where there are multiple identifiers
-                        # mapped to the same coordinates, MapMan refers to orthology terms
-                        # instead of genes.
-                        #
-                        # We transform the term to its mapped genes and clone the same
-                        # entry pointing to the same x & y coordinates to allow to work
-                        # as a KEGG pathway.
-                        #
-                        # General terms should also include child terms. I.e. 20.1 should
-                        # reference also 20.1.*.*
                         id_terms = featureID.get("id")
 
-                        pattern_search = re.compile(r"{0}(\.|\Z)".format(id_terms))
-
-                        # external_mapping
-                        genes_linked = set(list(itertools.chain.from_iterable([v for k, v in external_mapping.items() if pattern_search.search(k)])))
-
-                        # Link pathway to genes for network construction
-                        pathway2gene[pathway_id].update(genes_linked)
-
-                        for gene_id in genes_linked:
-
-                            # Link gene to pathway for network construction
-                            gene2pathway[gene_id].add(pathway_id)
+                        # Mapman does not have a way to tell if the node is a gene or compound,
+                        # so we determine it by checking the presence of the id inside the compounds
+                        # dict.
+                        if id_terms in REVERSE_MAPMAN_CPD:
+                            compound_linked = REVERSE_MAPMAN_CPD.get(id_terms)
 
                             entryAux = entry.copy()
-                            entryAux["id"] = gene_id
+                            entryAux["id"] = compound_linked
                             entryAux["recursive"] = featureID.get("recursive")
 
-                            ALL_PATHWAYS[pathway_id]["genes"].append(entryAux)
+                            ALL_PATHWAYS[pathway_id]["compounds"].append(entryAux)
+
+                        else:
+                            # As opposed to KEGG, where there are multiple identifiers
+                            # mapped to the same coordinates, MapMan refers to orthology terms
+                            # instead of genes.
+                            #
+                            # We transform the term to its mapped genes and clone the same
+                            # entry pointing to the same x & y coordinates to allow to work
+                            # as a KEGG pathway.
+                            #
+                            # General terms should also include child terms. I.e. 20.1 should
+                            # reference also 20.1.*.*
+                            pattern_search = re.compile(r"{0}(\.|\Z)".format(id_terms))
+
+                            # external_mapping
+                            genes_linked = set(list(itertools.chain.from_iterable([v for k, v in external_mapping.items() if pattern_search.search(k)])))
+
+                            # Link pathway to genes for network construction
+                            pathway2gene[pathway_id].update(genes_linked)
+
+                            for gene_id in genes_linked:
+
+                                # Link gene to pathway for network construction
+                                gene2pathway[gene_id].add(pathway_id)
+
+                                entryAux = entry.copy()
+                                entryAux["id"] = gene_id
+                                entryAux["recursive"] = featureID.get("recursive")
+
+                                ALL_PATHWAYS[pathway_id]["genes"].append(entryAux)
 
                 except Exception as ex:
                     errorMessage = "FAILED WHILE PROCESSING PATHWAY XML FILE [" + file_name + "]: " + str(ex)
@@ -1282,13 +1347,12 @@ def processReactomePathwaysData():
     REACTOME_DIR = DATA_DIR + "../reactome"
 
     # If the path already exists rename it
-    # TODO: re-enable this code
-    # if (os.path.exists(REACTOME_DIR)):
-    #     shutil.rmtree(REACTOME_DIR + ".bak", ignore_errors=True)
-    #     shutil.move(REACTOME_DIR, REACTOME_DIR + ".bak")
-    #
-    # os.makedirs(REACTOME_DIR)
-    # os.makedirs(REACTOME_DIR + "/png/thumbnails/")
+    if (os.path.exists(REACTOME_DIR)):
+        shutil.rmtree(REACTOME_DIR + ".bak", ignore_errors=True)
+        shutil.move(REACTOME_DIR, REACTOME_DIR + ".bak")
+
+    os.makedirs(REACTOME_DIR)
+    os.makedirs(REACTOME_DIR + "/png/thumbnails/")
 
 
     # When downloading Reactome data we only retrieve the top pathways from the species.
@@ -1326,22 +1390,28 @@ def processReactomePathwaysData():
 
     reuseDownloadedFiles = True
 
+    # Keep track of fail-to-download files that might be reused between pathways, to
+    # avoid keep trying to download them when they really don't exist.
+    notFoundFiles = []
 
-    def downloadJSONFile(URL, fileName, outputName, delay, maxTries, checkIfExists=False):
-        numberOfTries = 3
+    def downloadJSONFile(URL, fileName, outputName, delay, maxTries, checkIfExists=False, errorList=[]):
 
-        while numberOfTries > 0:
-            try:
-                downloadFile(URL, fileName, outputName, delay, maxTries, checkIfExists)
+        if URL not in errorList:
+            numberOfTries = 3
 
-                with open(outputName) as test_json:
-                    json.load(test_json)
-                    break
-            except Exception as ex:
-                os.remove(outputName)
-                continue
-            finally:
-                numberOfTries -= 1
+            while numberOfTries > 0:
+                try:
+                    downloadFile(URL, fileName, outputName, delay, maxTries, checkIfExists)
+
+                    with open(outputName) as test_json:
+                        json.load(test_json)
+                        break
+                except Exception as ex:
+                    os.remove(outputName)
+                    errorList.append(URL)
+                    continue
+                finally:
+                    numberOfTries -= 1
 
 
     try:
@@ -1356,10 +1426,10 @@ def processReactomePathwaysData():
             for pathway_entry in top_pathways:
                 # Download file: /data/query/enhanced/<ID>
                 # Parse file: "hasEvent" -> secondary pathways
-                stderr.write("\n\nStarting analysis of top pathway " + str(pathway_entry["stId"]))
+                stderr.write("\n\nStarting analysis of top pathway " + str(pathway_entry["stId"]) + "\n")
 
                 # Download the information for the top pathways
-                stderr.write("\nDownloading secondary pathways file " + str(pathway_entry["stId"]))
+                stderr.write("\nDownloading secondary pathways file " + str(pathway_entry["stId"]) + "\n")
                 pathway_details_url = COMMON_RESOURCES['reactome'].get("details_url").format(pathway_entry["stId"])
                 pathway_details_filename = REACTOME_DIR + str(pathway_entry["stId"]) + "_secondary_pathways.cache"
 
@@ -1378,7 +1448,7 @@ def processReactomePathwaysData():
                         secondary_pathway_details_url = COMMON_RESOURCES['reactome'].get("details_url").format(secondary_pathway_id)
                         secondary_pathway_details_filename = REACTOME_DIR + str(secondary_pathway_id) + "_pathway.cache"
 
-                        stderr.write("\nEvent Downloading event file pathways file " + str(secondary_pathway_id))
+                        stderr.write("\nDownloading event file pathways file " + str(secondary_pathway_id) + "\n")
                         downloadJSONFile(secondary_pathway_details_url, "", secondary_pathway_details_filename,
                                      SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
                         stderr.write("... Done\n")
@@ -1397,307 +1467,312 @@ def processReactomePathwaysData():
 
                             for final_pathway in pathway_loop:
 
-                                pathway_id = final_pathway.get("stId")
-                                pathway_name = final_pathway.get("name")[0]
-                                has_diagram = final_pathway.get("hasDiagram", False)
+                                try:
+                                    pathway_id = final_pathway.get("stId")
+                                    pathway_name = final_pathway.get("name")[0]
+                                    has_diagram = final_pathway.get("hasDiagram", False)
 
-                                total_lines += 1
+                                    total_lines += 1
 
-                                # Download diagram
-                                stderr.write("\nEvent Downloading png file " + str(pathway_id))
-                                diagram_url = COMMON_RESOURCES['reactome'].get("diagram_url").format(pathway_id)
-                                diagram_filename = REACTOME_DIR + "/png/" + pathway_id + ".png"
-                                downloadFile(diagram_url, "", diagram_filename,
-                                             SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, True)
-                                stderr.write("... Done\n")
-
-                                # Generate diagram thumbnail
-                                generateThumbnail(diagram_filename)
-
-                                # Download information about nodes (coordinates)
-                                #
-                                # Sometimes the pathway does not have diagram information, in which case
-                                # the parent's diagram should be retrieved then thoroughly parsed considering
-                                # all subpathways for saving the node information.
-                                if has_diagram:
-                                    stderr.write("\nEvent Downloading nodes url file " + str(pathway_id))
-                                    nodes_url = COMMON_RESOURCES['reactome'].get("nodes_url").format(pathway_id)
-                                    nodes_tmp_file = REACTOME_DIR + "/" + pathway_id + ".json"
-                                    downloadJSONFile(nodes_url, "", nodes_tmp_file,
-                                                 SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
-                                    stderr.write("... Done\n")
-                                else:
-                                    # Download parent info coordinates
-                                    stderr.write("\nEvent Downloading nodes url file " + str(secondary_pathway_id))
-                                    nodes_url = COMMON_RESOURCES['reactome'].get("nodes_url").format(secondary_pathway_id)
-                                    nodes_tmp_file = REACTOME_DIR + "/" + secondary_pathway_id + ".json"
-                                    downloadJSONFile(nodes_url, "", nodes_tmp_file,
-                                                 SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
+                                    # Download diagram
+                                    stderr.write("\nDownloading png file " + str(pathway_id) + "\n")
+                                    diagram_url = COMMON_RESOURCES['reactome'].get("diagram_url").format(pathway_id)
+                                    diagram_filename = REACTOME_DIR + "/png/" + pathway_id + ".png"
+                                    downloadFile(diagram_url, "", diagram_filename,
+                                                 SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, True)
                                     stderr.write("... Done\n")
 
-                                    # Download parent extra graph info to link child elements
-                                    stderr.write("\nEvent Downloading graph urls file " + str(secondary_pathway_id))
-                                    graph_url = COMMON_RESOURCES['reactome'].get("graph_url").format(secondary_pathway_id)
-                                    graph_tmp_file = REACTOME_DIR + "/" + secondary_pathway_id + ".graph.json"
-                                    downloadJSONFile(graph_url, "", graph_tmp_file,
-                                                 SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
-                                    stderr.write("... Done\n")
+                                    # Generate diagram thumbnail
+                                    generateThumbnail(diagram_filename)
 
-                                    try:
-                                        with open(graph_tmp_file) as graph_info:
+                                    # Download information about nodes (coordinates)
+                                    #
+                                    # Sometimes the pathway does not have diagram information, in which case
+                                    # the parent's diagram should be retrieved then thoroughly parsed considering
+                                    # all subpathways for saving the node information.
+                                    if has_diagram:
+                                        stderr.write("\nDownloading nodes url file " + str(pathway_id) + "\n")
+                                        nodes_url = COMMON_RESOURCES['reactome'].get("nodes_url").format(pathway_id)
+                                        nodes_tmp_file = REACTOME_DIR + "/" + pathway_id + ".json"
+                                        downloadJSONFile(nodes_url, "", nodes_tmp_file,
+                                                     SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles, notFoundFiles)
+                                        stderr.write("... Done\n")
+                                    else:
+                                        # Download parent info coordinates
+                                        stderr.write("\nDownloading nodes url file " + str(secondary_pathway_id) + "\n")
+                                        nodes_url = COMMON_RESOURCES['reactome'].get("nodes_url").format(secondary_pathway_id)
+                                        nodes_tmp_file = REACTOME_DIR + "/" + secondary_pathway_id + ".json"
+                                        downloadJSONFile(nodes_url, "", nodes_tmp_file,
+                                                     SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles, notFoundFiles)
+                                        stderr.write("... Done\n")
 
-                                            graph_data = json.load(graph_info)
+                                        # Download parent extra graph info to link child elements
+                                        stderr.write("\nDownloading graph urls file " + str(secondary_pathway_id) + "\n")
+                                        graph_url = COMMON_RESOURCES['reactome'].get("graph_url").format(secondary_pathway_id)
+                                        graph_tmp_file = REACTOME_DIR + "/" + secondary_pathway_id + ".graph.json"
+                                        downloadJSONFile(graph_url, "", graph_tmp_file,
+                                                     SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles, notFoundFiles)
+                                        stderr.write("... Done\n")
 
-                                            # Select the current pathway from the subpathways property to retrieve the
-                                            # events associated to it.
-                                            pathway_data = next(iter([subpathway for subpathway in graph_data.get("subpathways", []) if subpathway.get("stId") == pathway_id]), {})
+                                        try:
+                                            with open(graph_tmp_file) as graph_info:
 
-                                            # Events present in the pathway.
-                                            # Each event has its own input/output entities, which Ids are the ones
-                                            # contained in the nodes property of the graph, that in turn will allow to
-                                            # positionate it with the "diagramIds" property.
-                                            pathway_events = pathway_data.get("events", [])
-                                            pathway_nodes_ids = set([])
+                                                graph_data = json.load(graph_info)
 
-                                            if len(pathway_events) < 1:
-                                                stderr.write("NO LEN IN PATHWAY DATA OR EVENTS WITH REACTOME " + str(pathway_id) + ". USING PARENT ID " + str(secondary_pathway_id) + "\n")
+                                                # Select the current pathway from the subpathways property to retrieve the
+                                                # events associated to it.
+                                                pathway_data = next(iter([subpathway for subpathway in graph_data.get("subpathways", []) if subpathway.get("stId") == pathway_id]), {})
 
-                                            for event_id in pathway_events:
-                                                event_data = event_cache.get(event_id, None)
+                                                # Events present in the pathway.
+                                                # Each event has its own input/output entities, which Ids are the ones
+                                                # contained in the nodes property of the graph, that in turn will allow to
+                                                # positionate it with the "diagramIds" property.
+                                                pathway_events = pathway_data.get("events", [])
+                                                pathway_nodes_ids = set([])
 
-                                                # Download event data
-                                                if not event_data:
-                                                    stderr.write(
-                                                        "\nEvent Downloading details urls event file " + str(event_id))
-                                                    details_url = COMMON_RESOURCES['reactome'].get("details_url").format(
-                                                        event_id)
-                                                    details_tmp_file = REACTOME_DIR + "/" + str(event_id) + "_details.cache"
-                                                    downloadJSONFile(details_url, "", details_tmp_file,
-                                                                 #SERVER_SETTINGS.DOWNLOAD_DELAY_1,
-                                                                 0.5,
-                                                                 SERVER_SETTINGS.MAX_TRIES_1,
-                                                                 reuseDownloadedFiles)
+                                                if len(pathway_events) < 1:
+                                                    stderr.write("NO LEN IN PATHWAY DATA OR EVENTS WITH REACTOME " + str(pathway_id) + ". USING PARENT ID " + str(secondary_pathway_id) + "\n")
+
+                                                for event_id in pathway_events:
+                                                    event_data = event_cache.get(event_id, None)
+
+                                                    # Download event data
+                                                    if not event_data:
+                                                        stderr.write(
+                                                            "\nDownloading details urls event file " + str(event_id))
+                                                        details_url = COMMON_RESOURCES['reactome'].get("details_url").format(
+                                                            event_id)
+                                                        details_tmp_file = REACTOME_DIR + "/" + str(event_id) + "_details.cache"
+                                                        downloadJSONFile(details_url, "", details_tmp_file,
+                                                                     #SERVER_SETTINGS.DOWNLOAD_DELAY_1,
+                                                                     0.5,
+                                                                     SERVER_SETTINGS.MAX_TRIES_1,
+                                                                     reuseDownloadedFiles,
+                                                                     notFoundFiles)
+                                                        stderr.write("... Done\n")
+
+                                                        with open(details_tmp_file) as event_info:
+                                                            event_data = json.load(event_info)
+
+                                                            event_cache[event_id] = event_data
+
+
+                                                    # For each entity in the subpathway event, retrieve the linked nodes
+                                                    # in the graphic.
+                                                    stderr.write("\nRetrieving node info " +  str(event_id))
+
+                                                    # Whole reaction nodes
+                                                    all_nodes = event_data.get("input", []) + event_data.get("output", []) + event_data.get("catalystActivity", [])
+
+                                                    entry_ids = [entry_id.get("dbId") if isinstance(entry_id, dict) else entry_id for entry_id in all_nodes]
+                                                    diagram_ids = [node_elem.get("diagramIds") for node_elem in graph_data.get("nodes") if node_elem.get("dbId") in entry_ids]
+
+                                                    # Keep information of all events
+                                                    pathway_nodes_ids.update(itertools.chain.from_iterable(diagram_ids))
                                                     stderr.write("... Done\n")
-
-                                                    with open(details_tmp_file) as event_info:
-                                                        event_data = json.load(event_info)
-
-                                                        event_cache[event_id] = event_data
-
-
-                                                # For each entity in the subpathway event, retrieve the linked nodes
-                                                # in the graphic.
-                                                stderr.write("\nRetrieving node info " +  str(event_id))
-
-                                                # Whole reaction nodes
-                                                all_nodes = event_data.get("input", []) + event_data.get("output", []) + event_data.get("catalystActivity", [])
-
-                                                entry_ids = [entry_id.get("dbId") if isinstance(entry_id, dict) else entry_id for entry_id in all_nodes]
-                                                diagram_ids = [node_elem.get("diagramIds") for node_elem in graph_data.get("nodes") if node_elem.get("dbId") in entry_ids]
-
-                                                # Keep information of all events
-                                                pathway_nodes_ids.update(itertools.chain.from_iterable(diagram_ids))
-                                                stderr.write("... Done\n")
-                                    except Exception as ex:
-                                        errorMessage = str(ex)
-                                        FAILED_LINES["REACTOME PATHWAYS"].append([str(secondary_pathway_id) + ": " + errorMessage])
-                                        continue
-
-                                stderr.write("\nClassification part ")
-                                mainClassification = pathway_entry["displayName"]
-                                secondClassification = secondary_pathway.get("displayName")
-
-                                # Primary classification
-                                if not mainClassification in mainClassificationIDs:
-                                    mainClassificationIDs[mainClassification] = len(mainClassificationIDs) + 1
-                                    NODES[str(mainClassificationIDs[mainClassification]) + "A"] = {
-                                        "data": {"id": mainClassification.lower().replace(" ", "_"),
-                                                 "label": mainClassification, "is_classification": "A"}, "group": "nodes"}
-
-                                # Secondary classification
-                                if not secondClassification in secClassificationIDs:
-                                    secClassificationIDs[mainClassification] = len(secClassificationIDs) + 1
-                                    NODES[str(secClassificationIDs[mainClassification]) + "B"] = {
-                                        "data": {"id": secondClassification.lower().replace(" ", "_"),
-                                                 "parent": mainClassification.lower().replace(" ", "_"),
-                                                 "label": secondClassification,
-                                                 "is_classification": "B"}, "group": "nodes"}
-
-                                # Append to the global pathways container
-                                ALL_PATHWAYS[pathway_id] = {"ID": pathway_id, "name": pathway_name, "genes": [],
-                                                            "compounds": [], "relatedPathways": [], "source": "Reactome",
-                                                            "featureDB": "reactome_gene_id",
-                                                            "classification": ';'.join([mainClassification, secondClassification])}
-
-                                # Pathway node information
-                                NODES[pathway_id] = {"data": {"id": pathway_id, "label": pathway_name, "total_features": 0},
-                                                     "group": "nodes"}
-                                NODES[pathway_id]["data"]["parent"] = mainClassification.lower().replace(" ", "_"),
-
-                                with open(nodes_tmp_file) as pathway_info:
-                                    # Select the first and only component
-                                    pathway_data = json.load(pathway_info)
-
-                                    stderr.write("\nLoading pathway info ")
-
-                                    # Parse each node of the pathway
-                                    for reactome_entity in pathway_data.get("nodes"):
-                                        graphic_id = reactome_entity.get("id")
-                                        entity_id = reactome_entity.get("reactomeId")
-
-                                        stderr.write("\nChecking entity id " + str(entity_id))
-
-                                        # If the pathway itself did not have diagram, make sure that the
-                                        # general pathway entity is inside the subpathway entries.
-                                        if not has_diagram and graphic_id not in pathway_nodes_ids:
+                                        except Exception as ex:
+                                            errorMessage = str(ex)
+                                            FAILED_LINES["REACTOME PATHWAYS"].append([str(secondary_pathway_id) + ": " + errorMessage])
                                             continue
 
-                                        # Calculate the middle point
-                                        propX = int(reactome_entity.get("prop").get("x"))
-                                        propY = int(reactome_entity.get("prop").get("y"))
+                                    stderr.write("\nClassification part ")
+                                    mainClassification = pathway_entry["displayName"]
+                                    secondClassification = secondary_pathway.get("displayName")
 
-                                        propHeight = int(reactome_entity.get("prop").get("height"))
-                                        propWidth = int(reactome_entity.get("prop").get("width"))
+                                    # Primary classification
+                                    if not mainClassification in mainClassificationIDs:
+                                        mainClassificationIDs[mainClassification] = len(mainClassificationIDs) + 1
+                                        NODES[str(mainClassificationIDs[mainClassification]) + "A"] = {
+                                            "data": {"id": mainClassification.lower().replace(" ", "_"),
+                                                     "label": mainClassification, "is_classification": "A"}, "group": "nodes"}
 
-                                        entry = {
-                                            "id": "",
-                                            "x": int(propX + (propWidth/2)),
-                                            "y": int(propY + (propHeight/2 )),
-                                            "height": propHeight,
-                                            "width": propWidth,
-                                            "schemaClass": reactome_entity.get("schemaClass")
-                                        }
+                                    # Secondary classification
+                                    if not secondClassification in secClassificationIDs:
+                                        secClassificationIDs[mainClassification] = len(secClassificationIDs) + 1
+                                        NODES[str(secClassificationIDs[mainClassification]) + "B"] = {
+                                            "data": {"id": secondClassification.lower().replace(" ", "_"),
+                                                     "parent": mainClassification.lower().replace(" ", "_"),
+                                                     "label": secondClassification,
+                                                     "is_classification": "B"}, "group": "nodes"}
 
-                                        # Retrieve the information for each entity.
-                                        # Look before if the file exists as cache.
-                                        entity_filename = REACTOME_DIR + "/" + str(entity_id) + ".cache"
+                                    # Append to the global pathways container
+                                    ALL_PATHWAYS[pathway_id] = {"ID": pathway_id, "name": pathway_name, "genes": [],
+                                                                "compounds": [], "relatedPathways": [], "source": "Reactome",
+                                                                "featureDB": "reactome_gene_id",
+                                                                "classification": ';'.join([mainClassification, secondClassification])}
 
-                                        # if not os.path.exists(entity_filename):
-                                        stderr.write("\nDownload entity url file " + str(entity_id))
-                                        entity_url = COMMON_RESOURCES['reactome'].get("entity_url").format(entity_id)
-                                        downloadJSONFile(entity_url, "", entity_filename,
-                                                     SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
-                                        stderr.write("... Done!\n")
+                                    # Pathway node information
+                                    NODES[pathway_id] = {"data": {"id": pathway_id, "label": pathway_name, "total_features": 0},
+                                                         "group": "nodes"}
+                                    NODES[pathway_id]["data"]["parent"] = mainClassification.lower().replace(" ", "_"),
 
-                                        # The file will contain all the elements associated to the particular node.
-                                        with open(entity_filename) as entity_info:
-                                            entity_data = json.load(entity_info)
+                                    with open(nodes_tmp_file) as pathway_info:
+                                        # Select the first and only component
+                                        pathway_data = json.load(pathway_info)
 
-                                            stderr.write("\nLoading entity id " + str(entity_id))
+                                        stderr.write("\nLoading pathway info ")
 
-                                            # Each possible feature
-                                            for feature in entity_data:
-                                                # Retrieve special query data to have access to "referenceGene" property
-                                                feature_id = feature.get("dbId")
+                                        # Parse each node of the pathway
+                                        for reactome_entity in pathway_data.get("nodes"):
+                                            graphic_id = reactome_entity.get("id")
+                                            entity_id = reactome_entity.get("reactomeId")
 
-                                                feature_details_filename = REACTOME_DIR + "/" + str(feature_id) + "_details.cache"
+                                            stderr.write("\nChecking entity id " + str(entity_id))
 
-                                                if not os.path.exists(feature_details_filename):
-                                                    stderr.write("\nDownload feature DETAILS url file " + str(feature_id))
-                                                    feature_details_url = COMMON_RESOURCES['reactome'].get("details_url").format(feature_id)
-                                                    downloadJSONFile(feature_details_url, "", feature_details_filename,
-                                                                 SERVER_SETTINGS.DOWNLOAD_DELAY_1,
-                                                                 SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
-                                                    stderr.write("... Done!\n")
+                                            # If the pathway itself did not have diagram, make sure that the
+                                            # general pathway entity is inside the subpathway entries.
+                                            if not has_diagram and graphic_id not in pathway_nodes_ids:
+                                                continue
 
-                                                with open(feature_details_filename) as feature_info:
-                                                    feature_data = json.load(feature_info)
+                                            # Calculate the middle point
+                                            propX = int(reactome_entity.get("prop").get("x"))
+                                            propY = int(reactome_entity.get("prop").get("y"))
 
-                                                    # Select the first gene as starting point
-                                                    gene_ids = list(feature.get("geneName", feature.get("name", [])))
+                                            propHeight = int(reactome_entity.get("prop").get("height"))
+                                            propWidth = int(reactome_entity.get("prop").get("width"))
 
-                                                    if len(gene_ids) < 1:
-                                                        stderr.write("NO LEN IN PATHWAY DATA OR EVENTS WITH REACTOME FEATURE ID " + str(feature_id) + "\n")
-                                                        continue
+                                            entry = {
+                                                "id": "",
+                                                "x": int(propX + (propWidth/2)),
+                                                "y": int(propY + (propHeight/2 )),
+                                                "height": propHeight,
+                                                "width": propWidth,
+                                                "schemaClass": reactome_entity.get("schemaClass")
+                                            }
+
+                                            # Retrieve the information for each entity.
+                                            # Look before if the file exists as cache.
+                                            entity_filename = REACTOME_DIR + "/" + str(entity_id) + ".cache"
+
+                                            # if not os.path.exists(entity_filename):
+                                            stderr.write("\nDownload entity url file " + str(entity_id))
+                                            entity_url = COMMON_RESOURCES['reactome'].get("entity_url").format(entity_id)
+                                            downloadJSONFile(entity_url, "", entity_filename,
+                                                         SERVER_SETTINGS.DOWNLOAD_DELAY_1, SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
+                                            stderr.write("... Done!\n")
+
+                                            # The file will contain all the elements associated to the particular node.
+                                            with open(entity_filename) as entity_info:
+                                                entity_data = json.load(entity_info)
+
+                                                stderr.write("\nLoading entity id " + str(entity_id))
+
+                                                # Each possible feature
+                                                for feature in entity_data:
+                                                    # Retrieve special query data to have access to "referenceGene" property
+                                                    feature_id = feature.get("dbId")
+
+                                                    feature_details_filename = REACTOME_DIR + "/" + str(feature_id) + "_details.cache"
+
+                                                    if not os.path.exists(feature_details_filename):
+                                                        stderr.write("\nDownload feature DETAILS url file " + str(feature_id))
+                                                        feature_details_url = COMMON_RESOURCES['reactome'].get("details_url").format(feature_id)
+                                                        downloadJSONFile(feature_details_url, "", feature_details_filename,
+                                                                     SERVER_SETTINGS.DOWNLOAD_DELAY_1,
+                                                                     SERVER_SETTINGS.MAX_TRIES_1, reuseDownloadedFiles)
+                                                        stderr.write("... Done!\n")
+
+                                                    with open(feature_details_filename) as feature_info:
+                                                        feature_data = json.load(feature_info)
+
+                                                        # Select the first gene as starting point
+                                                        gene_ids = list(feature.get("geneName", feature.get("name", [])))
+
+                                                        if len(gene_ids) < 1:
+                                                            stderr.write("NO LEN IN PATHWAY DATA OR EVENTS WITH REACTOME FEATURE ID " + str(feature_id) + "\n")
+                                                            continue
 
 
-                                                    # Select the first one as default
-                                                    gene_id = gene_ids.pop(0)
+                                                        # Select the first one as default
+                                                        gene_id = gene_ids.pop(0)
 
-                                                    stderr.write("\n\tEntering gene id " + str(gene_id))
+                                                        stderr.write("\n\tEntering gene id " + str(gene_id))
 
-                                                    pathway2gene[pathway_id].update([gene_id] + gene_ids)
+                                                        pathway2gene[pathway_id].update([gene_id] + gene_ids)
 
-                                                    for gene in [gene_id] + gene_ids:
-                                                        gene2pathway[gene].add(pathway_id)
+                                                        for gene in [gene_id] + gene_ids:
+                                                            gene2pathway[gene].add(pathway_id)
 
-                                                    entryAux = entry.copy()
-                                                    entryAux["id"] = gene_id
+                                                        entryAux = entry.copy()
+                                                        entryAux["id"] = gene_id
 
-                                                    # Other names
-                                                    reference_genes = [gene.get("identifier") for gene in feature_data.get("referenceGene", [])]
+                                                        # Other names
+                                                        reference_genes = [gene.get("identifier") for gene in feature_data.get("referenceGene", [])]
 
-                                                    other_ids = set(reference_genes + gene_ids + [feature_data.get("identifier", "")])
+                                                        other_ids = set(reference_genes + gene_ids + [feature_data.get("identifier", "")])
 
-                                                    # schemaClass
-                                                    compoundTypes = ["ReferenceMolecule"]
+                                                        # schemaClass
+                                                        compoundTypes = ["ReferenceMolecule"]
 
-                                                    if feature.get("schemaClass") in compoundTypes:
+                                                        if feature.get("schemaClass") in compoundTypes:
 
-                                                        # Merge all compound IDs
-                                                        reactome_cpds = set([gene_id]).union(other_ids)
-                                                        common_cpds = set(KEGG_COMPOUNDS.keys()).intersection(reactome_cpds)
+                                                            # Merge all compound IDs
+                                                            reactome_cpds = set([gene_id]).union(other_ids)
+                                                            common_cpds = set(KEGG_COMPOUNDS.keys()).intersection(reactome_cpds)
 
-                                                        # Reuse the KEGG id
-                                                        if len(common_cpds):
-                                                            reactome_cpd_id = KEGG_COMPOUNDS[list(common_cpds)[0]]
+                                                            # Reuse the KEGG id
+                                                            if len(common_cpds):
+                                                                reactome_cpd_id = KEGG_COMPOUNDS[list(common_cpds)[0]]
 
-                                                            entryAux["id"] = reactome_cpd_id
+                                                                entryAux["id"] = reactome_cpd_id
 
-                                                            # Add the remaining ids as synonyms
-                                                            synonym_cpds = reactome_cpds.difference(common_cpds)
-                                                        else:
-                                                            reactome_cpd_id = "RC" + str(feature_data.get("identifier"))
-
-                                                            entryAux["id"] = reactome_cpd_id
-
-                                                            synonym_cpds = reactome_cpds
-
-                                                        # Add all the synonym identifiers under the same CPD id
-                                                        for synonym_cpd in synonym_cpds:
-                                                            REACTOME_COMPOUNDS[synonym_cpd] = reactome_cpd_id
-
-                                                        ALL_PATHWAYS[pathway_id]["compounds"].append(entryAux)
-                                                    else:
-                                                        ALL_PATHWAYS[pathway_id]["genes"].append(entryAux)
-
-                                                        # Reactome may use as gene id symbols already provided by KEGG
-                                                        # or other linked databases. As Paintomics uses the database id
-                                                        # to properly identify which symbol to display, we need to have
-                                                        # a copy for reactome database, using an empty string so as to avoid
-                                                        # conflictions.
-                                                        previous_symbol_item = findXREFByEntry(gene_id)
-
-                                                        reactome_gi = insertXREF(XREF_Entry(gene_id, reactome_gene_db_id, reactome_gene_desc), dbname)
-
-                                                        if previous_symbol_item:
-                                                            transcript_id = previous_symbol_item.getID()
-                                                        else:
-                                                            # Generate a random ID for the reactome identifier
-                                                            transcript_id = reactome_id_2_refseq_tid.get(reactome_gi,
-                                                                                                      generateRandomID(dbname))  # Try to reuse the ids for random transcripts
-                                                            reactome_id_2_refseq_tid[reactome_gi] = transcript_id
-
-                                                        # Save the reference
-                                                        insertTR_XREF(reactome_gi, transcript_id, dbname)
-
-                                                        for synonym_id in other_ids:
-                                                            # Check if the id already exists as a previous XREF.
-                                                            # Note: this requires KEGG mapping to be done BEFORE inserting
-                                                            # reactome pathways.
-                                                            stderr.write("\n\t\tSynonym " + str(synonym_id))
-
-                                                            entity_item = findXREFByEntry(synonym_id)
-
-                                                            if not entity_item:
-                                                                entity_gi = insertXREF(XREF_Entry(synonym_id, reactome_gene_db_id_other, reactome_gene_desc_other), dbname)
+                                                                # Add the remaining ids as synonyms
+                                                                synonym_cpds = reactome_cpds.difference(common_cpds)
                                                             else:
-                                                                entity_gi = entity_item.getID()
+                                                                reactome_cpd_id = "RC" + str(feature_data.get("identifier"))
 
-                                                            insertTR_XREF(entity_gi, transcript_id, dbname)
+                                                                entryAux["id"] = reactome_cpd_id
 
-                                                    stderr.write("... Done!\n")
+                                                                synonym_cpds = reactome_cpds
 
+                                                            # Add all the synonym identifiers under the same CPD id
+                                                            for synonym_cpd in synonym_cpds:
+                                                                REACTOME_COMPOUNDS[synonym_cpd] = reactome_cpd_id
+
+                                                            ALL_PATHWAYS[pathway_id]["compounds"].append(entryAux)
+                                                        else:
+                                                            ALL_PATHWAYS[pathway_id]["genes"].append(entryAux)
+
+                                                            # Reactome may use as gene id symbols already provided by KEGG
+                                                            # or other linked databases. As Paintomics uses the database id
+                                                            # to properly identify which symbol to display, we need to have
+                                                            # a copy for reactome database, using an empty string so as to avoid
+                                                            # conflictions.
+                                                            previous_symbol_item = findXREFByEntry(gene_id)
+
+                                                            reactome_gi = insertXREF(XREF_Entry(gene_id, reactome_gene_db_id, reactome_gene_desc), dbname)
+
+                                                            if previous_symbol_item:
+                                                                transcript_id = previous_symbol_item.getID()
+                                                            else:
+                                                                # Generate a random ID for the reactome identifier
+                                                                transcript_id = reactome_id_2_refseq_tid.get(reactome_gi,
+                                                                                                          generateRandomID(dbname))  # Try to reuse the ids for random transcripts
+                                                                reactome_id_2_refseq_tid[reactome_gi] = transcript_id
+
+                                                            # Save the reference
+                                                            insertTR_XREF(reactome_gi, transcript_id, dbname)
+
+                                                            for synonym_id in other_ids:
+                                                                # Check if the id already exists as a previous XREF.
+                                                                # Note: this requires KEGG mapping to be done BEFORE inserting
+                                                                # reactome pathways.
+                                                                stderr.write("\n\t\tSynonym " + str(synonym_id))
+
+                                                                entity_item = findXREFByEntry(synonym_id)
+
+                                                                if not entity_item:
+                                                                    entity_gi = insertXREF(XREF_Entry(synonym_id, reactome_gene_db_id_other, reactome_gene_desc_other), dbname)
+                                                                else:
+                                                                    entity_gi = entity_item.getID()
+
+                                                                insertTR_XREF(entity_gi, transcript_id, dbname)
+
+                                                        stderr.write("... Done!\n")
+                                except Exception as ex:
+                                    errorMessage = str(ex)
+                                    FAILED_LINES["REACTOME PATHWAYS"].append([errorMessage])
+                                    continue
     except Exception as ex:
         errorMessage = "FAILED WHILE PROCESSING REACTOME PATHWAYS: " + str(ex)
         FAILED_LINES["REACTOME PATHWAYS"].append([errorMessage])
@@ -1708,11 +1783,11 @@ def processReactomePathwaysData():
     # by KEGG process.
     file = open("/tmp/compounds.tmp", 'a')
     for cpdName, cpdID in REACTOME_COMPOUNDS.items():
-        file.write(json.dumps({"id" : cpdID, "name" : cpdName}, separators=(',', ':')) + "\n")
+        file.write(json.dumps({"id" : cpdID, "name" : cpdName}, cls=SetEncoder, separators=(',', ':')) + "\n")
     file.close()
 
 
-    # Insert the compounds colletracebacction
+    # Insert the compounds collection
     createCompoundsCollection()
 
     # MapMan pathways files are the same for each species, even the XML files.
@@ -1803,7 +1878,7 @@ def processReactomePathwaysData():
 
             # Write one row for each gene and pathway
             # reactome_gene2pathway.writelines(geneID.encode('utf-8') + "\t".encode('utf-8') + path_id.encode('utf-8') + "\n".encode('utf-8') for geneID in gene_ids)
-            reactome_gene2pathway.writelines(f"{geneID}\t{path_id}\n" for geneID in gene_ids)
+            reactome_gene2pathway.writelines("{}\t{}\n".format(geneID, path_id) for geneID in gene_ids)
 
     #***********************************************************************************
     #* BULK THE MATRIX INTO JSON:
@@ -2137,7 +2212,7 @@ def printResults():
     stderr.write("\n\n\n")
     stderr.write("\nVALID FEATURES LINES    : " + str(len(ALL_ENTRIES)))
     for key, value in FAILED_LINES.items():
-        stderr.write("\nERRONEOUS " + key + " LINES : " + str(len(value)) + " of " + str(TOTAL_FEATURES[key]) + " [" + str(int(len(value)/float(TOTAL_FEATURES[key])*100)) +"%]")
+        stderr.write("\nERRONEOUS " + str(key) + " LINES : " + str(len(value)) + " of " + str(TOTAL_FEATURES[key]) + " [" + str(int(len(value)/float(TOTAL_FEATURES.get(key, 0.1))*100)) +"%]")
 
     stderr.write("\n\n")
 
@@ -2190,9 +2265,9 @@ def dumpDatabase():
     error_tolerance = int(len(list(ALL_PATHWAYS.items())) * 0.05)
     for elem in ALL_PATHWAYS.values():
         try:
-            file.write(json.dumps(elem, separators=(',',':')) + "\n")
+            file.write(json.dumps(elem, cls=SetEncoder, separators=(',',':')) + "\n")
         except Exception as e:
-            stderr.write("Error when dumping the pathways\n")
+            stderr.write(f"Error when dumping the pathways: {str(e)}\n")
             error_tolerance-=1
             if error_tolerance == 0:
                 raise Exception("Too many errors while installing the pathways information. Aborting.")
@@ -2332,6 +2407,7 @@ ALL_PATHWAYS = {}
 ALL_VERSIONS = {}
 KEY_ENTRIES = {}
 KEGG_COMPOUNDS = {}
+MAPMAN_COMPOUNDS = {}
 
 #OTHER AUXILIAR TABLES OR VARIABLES
 TOTAL_FEATURES = {}
@@ -2341,6 +2417,7 @@ FAILED_LINES = {}
 DATA_DIR = ""
 SPECIE  = ""
 EXTERNAL_RESOURCES = None
+COMMON_RESOURCES = None
 
 kegg_id_2_refseq_tid = {}
 external_mapping = {}

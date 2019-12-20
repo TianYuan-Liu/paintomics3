@@ -17,6 +17,7 @@ COMMON_BUILD_DB_TOOLS = imp.load_source('common_build_database', ROOT_DIR + "scr
 COMMON_BUILD_DB_TOOLS.SPECIE= SPECIE
 COMMON_BUILD_DB_TOOLS.DATA_DIR= DATA_DIR
 COMMON_BUILD_DB_TOOLS.EXTERNAL_RESOURCES = imp.load_source('download_conf',  ROOT_DIR + "scripts/" + SPECIE + "_resources/download_conf.py").EXTERNAL_RESOURCES
+COMMON_BUILD_DB_TOOLS.COMMON_RESOURCES = imp.load_source('download_conf',  ROOT_DIR + "scripts/common_resources/download_conf.py").EXTERNAL_RESOURCES
 
 #**************************************************************************
 # CHANGE THE CODE FROM HERE
@@ -46,11 +47,11 @@ try:
     COMMON_BUILD_DB_TOOLS.dumpDatabase()
     COMMON_BUILD_DB_TOOLS.createDatabase()
 
-    try:
-        command = ROOT_DIR + "scripts/generateTestData.sh " + SPECIE + " " + DATA_DIR + "../../../"
-        check_call(command, shell=True)
-    except Exception:
-        pass
+    # try:
+    #     command = ROOT_DIR + "scripts/generateTestData.sh " + SPECIE + " " + DATA_DIR + "../../../"
+    #     check_call(command, shell=True)
+    # except Exception:
+    #     pass
 
 except CalledProcessError as ex:
     stderr.write("FAILED WHILE PROCESSING DATA " + str(ex))
