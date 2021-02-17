@@ -570,7 +570,7 @@ def getSpecieMappingData(specie, downloadLog, dirName, step, scriptsDir):
         if os.path.isfile(scriptsDir + specie + "_resources/download_others.py"):
             log("     * RETRIEVING EXTERNAL MAPPING DATA")
             try:
-                check_call(["python", scriptsDir + specie + "_resources/download_others.py", specie, ROOT_DIRECTORY + "AdminTools/", dirName], stdout=downloadLogFile, stderr=downloadLogFile)
+                check_call(["python3.8", scriptsDir + specie + "_resources/download_others.py", specie, ROOT_DIRECTORY + "AdminTools/", dirName], stdout=downloadLogFile, stderr=downloadLogFile)
             except CalledProcessError as exc:
                 raise Exception("Error while calling " + scriptsDir + specie + "_resources/download_others.py" +": Exit status " + str(exc.returncode) + ". Output is available at " + downloadLog)
 
@@ -621,14 +621,14 @@ def installSpecieData(specie, downloadLog, dirName, step, scriptsDir):
         if os.path.isfile(scriptsDir + specie + "_resources/build_database.py"):
             log("       * PROCESSING AND INSTALLING CUSTOM AND KEGG DATA ")
             try:
-                check_call(["python", scriptsDir + specie + "_resources/build_database.py", specie, ROOT_DIRECTORY + "AdminTools/", dirName, downloadLog], stdout=downloadLogFile, stderr=downloadLogFile)
+                check_call(["python3.8", scriptsDir + specie + "_resources/build_database.py", specie, ROOT_DIRECTORY + "AdminTools/", dirName, downloadLog], stdout=downloadLogFile, stderr=downloadLogFile)
             except CalledProcessError as exc:
                 errorlog(traceback.extract_stack())
                 raise Exception("Error while calling " + scriptsDir + specie + "_resources/build_database.py" +": Exit status " + str(exc.returncode) + ". Output is available at " + downloadLog)
         else:
             log("       * PROCESSING AND INSTALLING DEFAULT KEGG DATA ")
             try:
-                check_call(["python", scriptsDir  +  "default/build_database.py", specie, ROOT_DIRECTORY + "AdminTools/", dirName, downloadLog], stdout=downloadLogFile, stderr=downloadLogFile)
+                check_call(["python3.8", scriptsDir  +  "default/build_database.py", specie, ROOT_DIRECTORY + "AdminTools/", dirName, downloadLog], stdout=downloadLogFile, stderr=downloadLogFile)
             except CalledProcessError as exc:
                 errorlog(traceback.extract_stack())
                 raise Exception("Error while calling " + scriptsDir + "default/build_database.py" +": Exit status " + str(exc.returncode) + ". Output is available at " + downloadLog)
@@ -778,6 +778,8 @@ def generateAvailableSpeciesFile(VALID_SPECIES, INVALID_SPECIES, species_file, i
 #------------------------------------------------------------------------------------------
 
 def generateThumbnail(imagePath):
+    from PIL import ImageFile
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
     destination = imagePath.replace("png/", "png/thumbnails/").replace(".png", "_thumb.png")
     thumb = Image.open(imagePath)
     #Generate the thumbnail

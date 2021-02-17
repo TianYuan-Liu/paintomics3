@@ -8,10 +8,16 @@ from subprocess import CalledProcessError, check_call
 #
 # DO NOT CHANGE THIS CODE
 #**************************************************************************
-SPECIE      = argv[1]
-ROOT_DIR    = argv[2].rstrip("/") + "/"      #Should be src/AdminTools
-DATA_DIR    = argv[3].rstrip("/") + "/"
-LOG_FILE    = argv[4]
+SPECIE = "sot"
+ROOT_DIR = '/home/tian/Desktop/git/paintomics3/PaintomicsServer/src/AdminTools/'
+DATA_DIR = '/home/tian/Downloads/database/KEGG_DATA/current/sot/'
+LOG_FILE = "~/Downloads/database/KEGG_DATA/current/install.log"
+
+
+#SPECIE      = argv[1]
+#ROOT_DIR    = argv[2].rstrip("/") + "/"      #Should be src/AdminTools
+#DATA_DIR    = argv[3].rstrip("/") + "/"
+#LOG_FILE    = argv[4]
 
 COMMON_BUILD_DB_TOOLS = imp.load_source('common_build_database', ROOT_DIR + "scripts/common_build_database.py")
 COMMON_BUILD_DB_TOOLS.SPECIE= SPECIE
@@ -39,7 +45,7 @@ try:
     # (will not fail though)
     COMMON_BUILD_DB_TOOLS.processMapManPathwaysData()
 
-    COMMON_BUILD_DB_TOOLS.mergeNetworkFiles()
+    #COMMON_BUILD_DB_TOOLS.mergeNetworkFiles()
 
     #**************************************************************************
     # DUMP AND INSTALL

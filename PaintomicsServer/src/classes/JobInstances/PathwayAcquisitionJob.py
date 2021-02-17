@@ -859,7 +859,7 @@ class PathwayAcquisitionJob(Job):
 
 
     #GENERATE METAGENES LIST FUNCTIONS -----------------------------------------------------------------------------------------
-    def generateMetagenesList(self, ROOT_DIRECTORY, clusterNumber, omicList=None, database=None):
+    def generateMetagenesList(self, ROOT_DIRECTORY: object, clusterNumber: object, omicList: object = None, database: object = None) -> object:
         """
         This function obtains the metagenes for each pathway in KEGG based on the input values.
 
@@ -886,7 +886,13 @@ class PathwayAcquisitionJob(Job):
                     logging.info("GENERATING METAGENES INFORMATION FOR " + str(dbname) + "...CALLING")
                     inputFile = self.getTemporalDir() +  "/" + inputOmic.get("omicName") + '_matched.txt'
                     # Select number of clusters, default to dynamic
+
                     kClusters = str(dict(clusterNumber).get(inputOmic.get("omicName"), "dynamic"))
+                    logging.info("kClusters="+ str(kClusters))
+                    logging.info(str(ROOT_DIRECTORY))
+
+                    logging.info("dbname is " + str(dbname))
+
                     check_call([
                         ROOT_DIRECTORY + "common/bioscripts/generateMetaGenes.R",
                         '--specie="' + self.getOrganism() +'"',
@@ -894,7 +900,7 @@ class PathwayAcquisitionJob(Job):
                         '--output_prefix="'+ inputOmic.get("omicName") + '"',
                         '--data_dir="'+ self.getTemporalDir() + '"',
                         '--kegg_dir="'+ KEGG_DATA_DIR + '"',
-                        '--sources_dir="' + ROOT_DIRECTORY + '/common/bioscripts/"',
+                        '--sources_dir="' + ROOT_DIRECTORY + 'common/bioscripts/"',
                         '--kclusters="' + kClusters + '"' if kClusters.isdigit() else '',
                         '--database="' + dbname + '"' if dbname != "KEGG" else ''], stderr=STDOUT)
                     # STEP 2.2 PROCESS THE RESULTING FILE
@@ -905,13 +911,15 @@ class PathwayAcquisitionJob(Job):
                         if pathway.getSource().lower() == dbname:
                             pathway.resetMetagenes(inputOmic.get("omicName"))
 
-                    metagenesFileName = self.getTemporalDir() + "/" + inputOmic.get("omicName") + "_metagenes" +\
+
+                    metagenesFileName: object = self.getTemporalDir() + "/" + inputOmic.get("omicName") + "_metagenes" +\
                                         ("_" + str(dbname).lower() + ".tab" if dbname != "KEGG" else ".tab")
 
                     with open(metagenesFileName, 'rU') as inputDataFile:
                         for line in csv_reader(inputDataFile, delimiter="\t"):
                             if line[0] in self.matchedPathways:
                                 self.matchedPathways.get(line[0]).addMetagenes(inputOmic.get("omicName"), {"metagene": line[1], "cluster": line[2], "values" : line[3:] })
+                                logging.info("pathway:"+ str(line[0]) + " metaGene:" + str(line[1]) + " cluster:" + str(line[2]) + " values:"+ str(line[3:]))
                     inputDataFile.close()
             except CalledProcessError as ex:
                 logging.error("STEP2 - Error while generating metagenes information for " + inputOmic.get("omicName"))

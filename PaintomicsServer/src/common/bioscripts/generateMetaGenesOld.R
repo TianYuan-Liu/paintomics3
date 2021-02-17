@@ -1,19 +1,5 @@
 #!/usr/bin/env Rscript
 
-#Functions
-getBestIndexBy2SlopeLesser1stQuartilSlope <- function(p) {
-  v = 2:nrow(p$data)
-  y = p$data$y[v]-p$data$y[v-1]
-  firstQ = summary(y)[2]
-  c = NULL
-  for(i in 1:(length(y)-1)){
-    if(y[i]<=firstQ & y[i+1]<=abs(firstQ)){
-      c = c(c,i+2)
-    }
-  }
-  index = which(p$data$y==min(p$data$y[c])) #de los elegidos, el de menor suma de cuadrado
-  return(index)
-}
 ## Collect arguments   -----------------------------------------------------------------------------------------------
 args <- commandArgs(T)
 
@@ -35,14 +21,14 @@ if("--help" %in% args) {
       --kegg_dir=someValue     - character, location for KEGG data
       --sources_dir=someValue  - character, location for other R scritps
       --cutoff=someValue       - numerical, cutoff for the PCA Function (optional, default 0.3)
-      --cluster=someValue      - character, clustering method (kmeans or hmclust),  (optional, default kmeans)
-      --kclusters=someValue    - numerical, number of clusters for K-means/Mclust (optional, default calculated dinamically)
+      --cluster=someValue      - character, clustering method (kmeans or hierarchical),  (optional, default hierarchical)
+      --kclusters=someValue    - numerical, number of clusters for K-means (optional, default calculated dinamically)
       --database=someValue     - character, name of the database (optional, default KEGG)
 
       --help                 - print this text
  
       Example:
-      ./generateMetaGenes.R --specie="mmu" --input_file="Gene expression_matched.txt" --output_prefix="gene_expression" --data_dir="/home/rhernandez/Desktop/test/" --kegg_dir="/data/KEGG_DATA/ --sources_dir="/home/rhernandez/Desktop/workspace/paintomics/PaintomicsServer/src/common/bioscripts/"\n\n')
+      ./generateMetaGenes.R --specie="mmu" --input_file="Gene expression_matched.txt" --output_prefix="gene_expression" --data_dir="/home/rhernandez/Desktop/caca/test/" --kegg_dir="/data/KEGG_DATA/ --sources_dir="/home/rhernandez/Desktop/workspace/paintomics/PaintomicsServer/src/common/bioscripts/"\n\n')
   
   q(save="no")
 }
@@ -55,7 +41,7 @@ argsL <- as.list(as.character(argsDF$V2))
 names(argsL) <- argsDF$V1
 args <- as.data.frame(argsL, stringsAsFactors=F)
 
-# args <- data.frame(specie="mmu", input_file="Gene expression_matched.txt", output_prefix="res", data_dir="/home/rhernandez/Desktop/caca/test", kegg_dir="/data/KEGG_DATA/", sources_dir="/var/www/paintomics/src/common/bioscripts/", stringsAsFactors = F, cluster="kmeans")
+# args <- data.frame(specie="mmu", input_file="Gene expression_matched.txt", output_prefix="caca", data_dir="/home/rhernandez/Desktop/caca/test", kegg_dir="/data/KEGG_DATA/", sources_dir="/var/www/paintomics/src/common/bioscripts/", stringsAsFactors = F, cluster="hierarchical")
 
 ## cutoff default
 if(is.null(args$cutoff)) {
@@ -64,7 +50,7 @@ if(is.null(args$cutoff)) {
 }
 ## cutoff default
 if(is.null(args$cluster)) {
-  args$cluster <- "kmeans" #default
+  args$cluster <- "kmeans"
 }
 
 if(is.null(args$database)) {
@@ -73,7 +59,7 @@ if(is.null(args$database)) {
   args$database <- paste("_", tolower(args$database), sep="")
 }
 
-args$kegg_dir <- paste0(args$kegg_dir, "current/", args$specie, "/gene2pathway",args$database, ".list", sep="")
+args$kegg_dir <- paste(args$kegg_dir, "current/", args$specie, "/gene2pathway", args$database, ".list", sep="")
 
 
 # LOAD DEPENDENCIES   --------------------------------------------------------------------------------------------
@@ -89,7 +75,7 @@ sel = "single%"
 
 #LOAD DATA    ---------------------------------------------------------------------------------------------------
 cat("STEP 3. Load input data, ")
-#dir.create(args$data_dir, showWarnings = FALSE)
+dir.create(args$data_dir, showWarnings = FALSE)
 setwd(args$data_dir)
 # Read the reference file
 genes2pathway <- data.frame(read.table(file=args$kegg_dir, header=FALSE, sep="\t", quote="", as.is=TRUE))
@@ -111,10 +97,7 @@ input_data <- read.table(file=args$input_file, header=FALSE, sep="\t", quote="")
 input_data <- input_data[!duplicated(input_data$V3),]
 # Adapt input data to a data.frame object
 if (args$database == "") {
-  input_data <- data.frame(input_data[,4:ncol(input_data)], row.names=paste(args$specie,":", tolower(input_data[,3]), sep=""))
-  
-  input_data <- input_data[,2:ncol(input_data)]
-  #input_data <- data.frame(input_data[,5:ncol(input_data)], row.names=paste(args$specie, ":", tolower(input_data[,3]), sep=""))
+  input_data <- data.frame(input_data[,5:ncol(input_data)], row.names=paste(args$specie, ":", tolower(input_data[,3]), sep=""))
 } else {
   input_data <- data.frame(input_data[,5:ncol(input_data)], row.names=tolower(input_data[,3]))
 }
@@ -172,45 +155,57 @@ for (i in 1:length(row.names(metagenes)) ) {
 # CLUSTERIZE ----------------------------------------------------------------------------------------------------
 data <- metagenes
 
-library(cluster)
-library(amap) 
-library(mclust) #new
-library(factoextra) #new
-dataScaled <- t(scale(t(data), center = T, scale = F)) #no do scaling with all subset
-dist.res <- Dist(dataScaled, method = "pearson")
-
 if(is.null(args$kclusters)) {
-
+  library(cluster)
+  library(amap) 
+  
   ## cutoff default
+  #data <- scale(metagenes)
 
   # Compute pairwise distance matrices
+  dist.res <- Dist(data, method = "pearson")
+  k.max <- round(sqrt(length(row.names(data))/2)) + 1
+  sil <- rep(0, k.max)
 
-  k.max <- round(sqrt(length(row.names(dataScaled))/2)) + 1
-
-  if(args$cluster=="kmeans"){
-    # Check best cluster using WSS
-    p = fviz_nbclust(x = dataScaled, FUNcluster = stats::kmeans, method = c("wss"), 
-                     diss = dist.res,
-                     k.max = k.max, verbose = TRUE) +
-      labs(title = "Optimal number of clusters")
-    args$kclusters <- getBestIndexBy2SlopeLesser1stQuartilSlope(p)
-    p <- p + geom_vline(xintercept = args$kclusters, linetype = 2)
-    ggsave(plot = p, filename=paste0(args$output_prefix,"_elbow.png"), width = 15, height = 6, dpi = 200, units = "cm")
-    
+  if(args$cluster=="hierarchical"){
+    # Compute the average silhouette width for k = 2 to k = maxK
+    for(i in 2:k.max){
+      # Hierarchical clustering results
+      hc <- hclust(dist.res, method = "complete")
+      hc.cut <- cutree(hc, k = i)
+      ss <- silhouette(hc.cut, dist.res)
+      sil[i] <- mean(ss[, 3])
+    }
   }else{
-    # Compute clusters using Mclust (ML)
-    fit <- Mclust(dist.res, G = 1:k.max)
-    args$kclusters <- fit$G
+    # Compute the average silhouette width for k = 2 to k = maxK
+    for(i in 2:k.max){
+      km.res <- kmeans(data, centers = i, iter.max = 20)
+      ss <- silhouette(km.res$cluster, dist.res)
+      sil[i] <- mean(ss[, 3])
+    }
+  }
+
+  #args$kclusters <- which.max(sil)
+  valid <- which(sil > 0.7)
+  if(length(valid) == 0){
+    valid <- which(sil > 0.6)
+  }
+  
+  if(length(valid) == 0){
+    args$kclusters <- which.max(sil)
+  }else{
+    args$kclusters <- max(valid)
   }
   
 } else {
   args$kclusters = as.integer(args$kclusters)
 }
 
-if(args$cluster=="kmeans"){
-  clusters <- stats::kmeans(dist.res, centers = args$kclusters, iter.max = 500)
+if(args$cluster=="hierarchical"){
+  hc <- hclust(dist.res, method = "complete")
+  clusters <- cutree(hc, k = args$kclusters)
 }else{
-  clusters <- fit <- Mclust(dist.res, G = args$kclusters)
+  clusters <- kmeans(data, centers = args$kclusters, iter.max = 20)
 }
 
 
@@ -222,12 +217,11 @@ prev_pathway_id <- ""
 
 # function to find medoid in cluster i
 clust.centroid = function(method, data, clusters, i) {
-  if(method == 'kmeans'){
-    ind = (which(clusters$cluster == i))
+  if(method == 'hierarchical'){
+    ind = (clusters == i)
     colMeans(data[ind,])
-  }else{ #mclust
-    ind = (which(clusters$classification == i))
-    colMeans(data[ind,])
+  }else{
+    clusters$centers[i,]
   }
 }
 
@@ -235,30 +229,29 @@ minMax <- range(data)
 # GENERATE THE METAGENES IMAGES-----------------------------------------------------------------------------------
 for (i in 1:args$kclusters){
   #GET THE PATHWAY IDS FOR CURRENT CLUSTER
-  if(args$cluster=="kmeans"){
-    pathway_ids <- names(which(clusters$cluster==i))
+  if(args$cluster=="hierarchical"){
+    pathway_ids <- names(which(clusters==i))
   }else{
-    pathway_ids <- names(which(clusters$classification==i))
+    pathway_ids <- names(clusters$cluster[clusters$cluster==i])
   }
   #GET THE VALUES FOR THESE PATHWAYS
-  values <- as.matrix(dataScaled[pathway_ids,])
-  minMax <- range(values)
+  values <- data[pathway_ids,]
   #CREATE THE PNG
   png(paste(args$output_prefix, "_cluster_", i, args$database, ".png", sep=""), height = 150, width = 150)
   par(mai = rep(0, 4), mar = rep(0.8, 4))
   
   if(length(row.names(values)) > 1){
     #Plot first cluster
-    plot(as.matrix(values[1,]), type="l", col="gray88", main=paste(length(pathway_ids), "metagenes"), axes=F, xlab=NULL, ylim = minMax)
+    plot(values[1,], type="l", col="gray88", main=paste(length(pathway_ids), "metagenes"), ylim=minMax, axes=F, xlab=NULL)
     #Plot remaining clusters (if any)
     for (n in 2:length(row.names(values)) ) {
-      lines(as.matrix(values[n,]), type="l", col="gray88")
+      lines(values[n,], type="l", col="gray88")
     }
-    #Plot centroid if multiple lines
-    lines(clust.centroid(args$cluster, dataScaled, clusters, i), type="l", col="red", lwd=2)
   }else{
-    plot(as.matrix(values), type="l", col="red", main=paste(length(pathway_ids), "metagenes"), axes=F, xlab=NULL, ylim = minMax)
+    plot(values, type="l", col="gray88", main=paste(length(pathway_ids), "metagenes"), ylim=minMax, axes=F, xlab=NULL)
   }
+  #Plot centroid
+  lines(clust.centroid(args$cluster, data, clusters, i), type="l", col="red", lwd=2)
   abline(h =0)
   box()
   
@@ -266,19 +259,18 @@ for (i in 1:args$kclusters){
 }
 
 #Add cluster info to table
-metagenes <- as.data.frame(data)
+metagenes <- as.data.frame(metagenes)
 for (i in 1:args$kclusters){
   #GET THE PATHWAY IDS FOR CURRENT CLUSTER
-  if(args$cluster=="kmeans"){
-    pathway_ids <- names(which(clusters$cluster==i))
+  if(args$cluster=="hierarchical"){
+    pathway_ids <- names(which(clusters==i))
   }else{
-    pathway_ids <- names(which(clusters$classification==i))
+    pathway_ids <- names(clusters$cluster[clusters$cluster==i])
   }
   metagenes[pathway_ids, "cluster"] <- i
 }
 #Update the name for the rows
 rownames(metagenes) <- gsub("_", "\t", gsub("path:", "", rownames(metagenes)))
-#rownames(metagenes) <- gsub("_*", "", gsub("path:", "", rownames(metagenes)))
 
 #Save table to file
 if (args$database == "") {
@@ -286,4 +278,5 @@ if (args$database == "") {
 } else {
   output_file = paste(args$output_prefix, "metagenes", paste0(substring(args$database, 2), ".tab"), sep="_")
 }
+metagenes = metagenes[1:10,]
 write.table(metagenes[, c(ncol(metagenes), 1:(ncol(metagenes) - 1))], file=output_file, quote = FALSE, sep="\t", col.names = FALSE)

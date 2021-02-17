@@ -502,9 +502,16 @@ function JobController() {
 		// IndexDB has an async nature so we need to provide a callback
 		var callback = function(networkData) {
 			// Make sure that the time
-			if (networkData !== null && networkData !== undefined && networkData.timestamp > application.timestamp) {
-				jobView.generateNetwork(networkData);
-			} else {
+			if (jobView.database == "Reactome") {
+				$.getJSON(SERVER_URL_GET_PATHWAY_NETWORK_REACTOME + "/" + jobView.getModel().getOrganism(), function (pathwaysNetworkData) {
+					// Set the id key as organism
+					pathwaysNetworkData.id = jobView.getModel().getOrganism();
+					pathwaysNetworkData.timestamp = Math.floor( Date.now() / 1000 );
+
+					me.updateStoredApplicationDataIndexDB("networks", pathwaysNetworkData);
+					jobView.generateNetwork(pathwaysNetworkData);
+				});
+			} else if (jobView.database == "KEGG") {
 				//TODO: CHANGE URL
 				$.getJSON(SERVER_URL_GET_PATHWAY_NETWORK + "/" + jobView.getModel().getOrganism(), function (pathwaysNetworkData) {
 					// Set the id key as organism
@@ -514,6 +521,16 @@ function JobController() {
 					me.updateStoredApplicationDataIndexDB("networks", pathwaysNetworkData);
 					jobView.generateNetwork(pathwaysNetworkData);
 				});
+			} else if (jobView.database == "MapMan") {
+			    $.getJSON(SERVER_URL_GET_PATHWAY_NETWORK_MAPMAN + "/" + jobView.getModel().getOrganism(), function (pathwaysNetworkData) {
+					// Set the id key as organism
+					pathwaysNetworkData.id = jobView.getModel().getOrganism();
+					pathwaysNetworkData.timestamp = Math.floor( Date.now() / 1000 );
+
+					me.updateStoredApplicationDataIndexDB("networks", pathwaysNetworkData);
+					jobView.generateNetwork(pathwaysNetworkData);
+				});
+
 			}
 		};
 		

@@ -79,20 +79,40 @@ class Application(object):
         ##*******************************************************************************************
         @self.app.route(SERVER_SUBDOMAIN + '/kegg_data/<path:filename>')
         def get_kegg_data(filename):
+            logging.info("filename is:" + str(filename))
             if str(filename) == "species.json":
                 return send_from_directory(KEGG_DATA_DIR + 'current/', 'species.json')
             else:
                 # Possible accepted format <path>_<source>_thumb
                 split_name = filename.replace('_thumb', '').split('_')
 
+                logging.info("split_name is:" + str(split_name))
+
                 # Sanitize input
-                source_type = sub(r'\W+', '', split_name[1]) if len(split_name) > 1 else None
+                source_type = sub(r'\W+', '', split_name[-1]) if len(split_name) > 1 else None
                 source_dir = 'current/' + source_type.lower() if source_type is not None else 'current/common'
+                logging.info("split_name is:" + str(source_dir))
 
                 # Add "map" prefix for KEGG pathways
                 filename_prefix = 'map' if source_type is None else str()
 
-                filename_cleaned = sub("[^0-9]", "", split_name[0]) if source_type is None else split_name[0]
+                def convert_list_to_string(org_list, seperator='_'):
+                    """ Convert list to string, by joining all item in list with given separator.
+                        Returns the concatenated string """
+                    return seperator.join( org_list )
+
+
+                if source_type is None:
+                    filename_cleaned = sub("[^0-9]", "", split_name[0]) if source_type is None else split_name[0]
+                elif source_type.lower() == "mapman":
+                    filename_cleaned = convert_list_to_string(split_name[:-1])
+                    logging.info("filenamecleaned is:" + filename_cleaned)
+                else:
+                    filename_cleaned = sub("[^0-9]", "", split_name[0]) if source_type is None else split_name[0]
+
+
+                logging.info( "Name is: " + str( KEGG_DATA_DIR ) + str( source_dir ) + '/png/thumbnails/',
+                                  str( filename_prefix ) + str( filename_cleaned ) + '_thumb.png' )
 
                 if str(filename).endswith("_thumb"):
                     return send_from_directory(KEGG_DATA_DIR + source_dir + '/png/thumbnails/', filename_prefix + filename_cleaned + '_thumb.png')
@@ -104,6 +124,16 @@ class Application(object):
         @self.app.route(SERVER_SUBDOMAIN + '/kegg_data/pathway_network/<path:specie>')
         def get_pathway_network(specie):
             return send_from_directory(KEGG_DATA_DIR + 'current/' + specie, 'pathways_network.json')
+
+        @self.app.route(SERVER_SUBDOMAIN + '/kegg_data/pathway_network_reactome/<path:specie>')
+        def get_pathway_network_reactome(specie):
+            return send_from_directory(KEGG_DATA_DIR + 'current/' + specie, 'pathways_network_Reactome.json')
+
+        @self.app.route( SERVER_SUBDOMAIN + '/kegg_data/pathway_network_mapman/<path:specie>' )
+        def get_pathway_network_mapman(specie):
+            return send_from_directory( KEGG_DATA_DIR + 'current/' + specie, 'pathways_network_MapMan.json' )
+
+
         ##*******************************************************************************************
         ##* GET DATA FROM CLIENT TMP DIR
         ##*******************************************************************************************
@@ -116,6 +146,8 @@ class Application(object):
         @self.app.route(SERVER_SUBDOMAIN + '/get_cluster_image/<path:filename>')
         def get_cluster_image(filename):
             jobID = filename.split('/')[0]
+            logging.info("filename:" + str(filename))
+
             jobInstance = JobInformationManager().loadJobInstance(jobID)
 
             # Check if the file really exist, if not, then we are probably accessing a public job from a logged

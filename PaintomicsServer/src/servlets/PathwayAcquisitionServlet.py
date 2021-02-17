@@ -52,7 +52,6 @@ def pathwayAcquisitionStep1_PART1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID, EXA
         Step 3. SAVE THE UPLOADED FILES
         Step 4. QUEUE THE JOB INSTANCE
         Step 5. RETURN THE NEW JOB ID
-
     @param {Request} REQUEST
     @param {Response} RESPONSE
     @param {RQ QUEUE} QUEUE_INSTANCE
@@ -134,7 +133,7 @@ def pathwayAcquisitionStep1_PART1(REQUEST, RESPONSE, QUEUE_INSTANCE, JOB_ID, EXA
 
             specie = "mmu"
             jobInstance.setOrganism(specie)
-            jobInstance.setDatabases(['KEGG', 'Reactome']) # TODO: cambiar
+            jobInstance.setDatabases(['KEGG', "Reactome"]) # TODO: cambiar
         else:
             raise NotImplementedError
 
@@ -441,6 +440,7 @@ def pathwayAcquisitionStep3(request, response):
 
         if(jobInstance == None):
             raise UserWarning("Job " + jobID + " was not found at database.")
+
         logging.info("STEP3 - JOB " + jobInstance.getJobID() + " LOADED SUCCESSFULLY.")
 
         #****************************************************************
@@ -590,6 +590,7 @@ def pathwayAcquisitionSaveImage(request, response):
         # userDirID = userID if userID is not None else "nologin"
         # path = CLIENT_TMP_DIR + userDirID + jobInstance.getOutputDir().replace(CLIENT_TMP_DIR + userDirID, "")
         path = jobInstance.getOutputDir()
+        logging.info("The path is xxx: " + path)
 
         if(fileFormat == "png"):
             def createImage(svgData):
@@ -770,6 +771,7 @@ def pathwayAcquisitionMetagenes_PART2(ROOT_DIRECTORY, userID, savedJobInstance, 
 
         matchedPathwaysJSONList = []
         for matchedPathway in savedJobInstance.getMatchedPathways().values():
+            logging.info("match_pathway:"+str(matchedPathway))
             matchedPathwaysJSONList.append(matchedPathway.toBSON())
 
         RESPONSE.setContent({
@@ -778,6 +780,7 @@ def pathwayAcquisitionMetagenes_PART2(ROOT_DIRECTORY, userID, savedJobInstance, 
             # "timestamp": newTimestamp,
             "pathwaysInfo": matchedPathwaysJSONList
         })
+        logging.info("matchedPathwaysJSONList:"+str(matchedPathwaysJSONList))
 
     except Exception as ex:
         handleException(RESPONSE, ex, __file__ , "pathwayAcquisitionMetagenes_PART2", userID=userID)

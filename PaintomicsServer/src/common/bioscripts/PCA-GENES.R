@@ -6,7 +6,7 @@ PCA.GENES<-function(X)
 #X is a matrix that has on columns the genes considered as variables in the PCA analysis.
 #First we center the matrix by columns (Xoff) and then we obtain the eigenvalues and the eigenvectors of the matrix Xoff%*%t(Xoff) and we #use the equivalences between the loadings and scores to obtain the solution
 #Llamo scores1 y loadings1 a lo que busco y scores2 y loadings2 a los scores y loadings de la traspuesta
-
+X <- apply(X, 2, as.numeric)
 X <- as.matrix(X)
 n<-ncol(X)
 p<-nrow(X)

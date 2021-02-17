@@ -353,14 +353,22 @@ function PA_Step3JobView() {
 	**/
 	this.getClassificationColor = function(classificationID, otherColors){
 		var colors = ["#007AFF",  "#4CD964", "#FF2D55", "#FFCD02", "#5AC8FB", "#C644FC", "#FF9500",
-					  "#6b5b95", "#b2ad7f", "#a2b9bc", "#b5e7a0", "#b9936c", "#d6cbd3", "#eca1a6", "#bdcebe", "#e3eaa7", "#c1946a", "#034f84", "#92a8d1", "#deeaee", "#ffef96", "#50394c",
-					  "#618685", "#c1502e", "#7a3b2e", "#99ffcc", "#ffff00", "#990033", "#990099", "#994d00", "#269900", "#009999"];
+					  "#6b5b95",  "#232ACD", "#b2ad7f", "#a2b9bc", "#b5e7a0", "#b9936c", "#d6cbd3", "#eca1a6", "#bdcebe", "#e3eaa7", "#c1946a", "#034f84", "#92a8d1", "#deeaee", "#ffef96", "#50394c",
+					  "#618685", "#c1502e", "#7a3b2e", "#99ffcc", "#ffff00", "#990033", "#990099", "#994d00", "#269900", "#009999",
+					  "#642E22", "#645322"
+					  ];
 		var pos = ["cellular_processes", "environmental_information_processing", "genetic_information_processing", "human_diseases", "metabolism", "organismal_systems", "overview",
+		            // add MapMan classification
+		            "metabolism2nd",
 				  // Added Reactome classification
+
 				  "cell_cycle", "cell-cell_communication", "cellular_responses_to_external_stimuli", "chromatin_organization", "circadian_clock", "developmental_biology",
 				  "digestion_and_absorption", "disease", "dna_repair", "dna_replication", "extracellular_matrix_organization", "gene_expression_(transcription)",
 				  "hemostasis", "immune_system", "metabolism_of_proteins", "metabolism_of_rna", "mitophagy", "muscle_contraction", "neuronal_system", 
-				  "organelle_biogenesis_and_maintenance", "programmed_cell_death", "reproduction", "signal_transduction", "transport_of_small_molecules", "vesicle-mediated_transport"].indexOf(classificationID);
+				  "organelle_biogenesis_and_maintenance", "programmed_cell_death", "reproduction", "signal_transduction", "transport_of_small_molecules", "vesicle-mediated_transport",
+				  // Added Reactome for mmu
+				  "protein_localization", "autophagy"
+				  ].indexOf(classificationID);
 
 		if(pos !== -1){
 			return colors[pos];
@@ -1208,6 +1216,7 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 			/********************************************************/
 			var elem, nodesAux = [], edgesAux = [], matchedPathway=null, ignoredPathways = {};
 			var nElems = data.nodes.length;
+			countN = 0
 			for (var i = nElems; i--;) {
 				elem = data.nodes[i];
 				matchedPathway = indexedPathways[elem.data.id];
@@ -1235,7 +1244,13 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 				/*	  the maximum allowed.								*/
 				/********************************************************/
 				var pValue = 1;
+
+
+				
+
 				try{
+				    countN = countN + 1;
+				    console.log(countN);
 					var selectedCombinedPvalueMethod = me.getParent().visualOptions.selectedCombinedMethod;
 					var selectedAdjustingMethod = visualOptions.networkPvalMethod;
 					var useCombinedPvalue = visualOptions.useCombinedPvalCheckbox;
@@ -1260,10 +1275,11 @@ function PA_Step3PathwayClassificationView(db = "KEGG") {
 					//pass
 					pValue = 1;
 				}
-				
 				matchedPathway.setTotalFeatures(matchedPathway.getMatchedGenes().length + matchedPathway.getMatchedCompounds().length);
 				if (elem.data.total_features * visualOptions.minFeatures > matchedPathway.getTotalFeatures() || pValue > visualOptions.minPValue){
+
 					ignoredPathways[elem.data.id] = true;
+
 					continue;
 				}
 				/********************************************************/
